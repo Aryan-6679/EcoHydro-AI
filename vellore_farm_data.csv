@@ -1,0 +1,7 @@
+id,name,fpo,lat,lon,acres,crop,moisture,status
+F-01,North Arcot Paddy Cluster,North Arcot Farmers Co.,12.9716,79.1589,12.5,Paddy Rice,24,Deficit
+F-02,Katpadi Sugarcane Zone,Palar River Basin FPO,12.9850,79.1350,18.0,Sugarcane,42,Optimal
+F-03,Gudiyatham Groundnut Field,Gudiyatham Agri Group,12.9450,78.8700,8.2,Groundnut,18,Critical
+F-04,Anaicut Maize Plantation,South Vellore FPO,12.8700,79.0300,15.4,Maize,35,Optimal
+F-05,Walajah Mango Orchards,Ranipet Organics,12.9244,79.3300,22.0,Mango,28,Deficit
+F-06,Kaniyambadi Cotton Farms,Kaniyambadi Agri Co.,12.8333,79.1167,30.5,Cotton,20,Critical
