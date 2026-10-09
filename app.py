@@ -131,7 +131,7 @@ if view == "🌍 GIS Farm Telemetry":
     fig_map = px.scatter_mapbox(
         farm_data, lat="lat", lon="lon", color="status", size="acres",
         hover_name="name", 
-        hover_data=["crop", "acres", "moisture_level"], # Fixed column names
+        hover_data=["crop", "acres", "moisture"], # Corrected from moisture_level to moisture
         color_discrete_map={"Optimal": "#10b981", "Deficit": "#f59e0b", "Critical": "#ef4444"},
         zoom=10, center={"lat": 12.9165, "lon": 79.1325}, mapbox_style="carto-positron"
     )
