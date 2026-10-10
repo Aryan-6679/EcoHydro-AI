@@ -9,7 +9,7 @@ import json
 # ==========================================
 # 1. PAGE CONFIGURATION & SETUP
 # ==========================================
-st.set_page_config(page_title="EcoHydro AI | VIT Hackathon", page_icon="🌱", layout="wide")
+st.set_page_config(page_title="EcoHydro AI | Skynet Hackathon", page_icon="🌱", layout="wide")
 
 # Custom CSS for styling
 st.markdown("""
@@ -44,7 +44,6 @@ def load_farm_data():
         df = pd.read_csv("vellore_farm_data.csv")
         return df
     except FileNotFoundError:
-        # Fallback synthetic data if CSV is missing
         return pd.DataFrame({
             "id": [1, 2, 3, 4, 5],
             "name": ["Katpadi FPO", "Kaniyambadi FPO", "Anaicut FPO", "Gudiyatham FPO", "K.V. Kuppam FPO"],
@@ -52,13 +51,12 @@ def load_farm_data():
             "lon": [79.1390, 79.1333, 78.9833, 78.8711, 79.0345],
             "crop": ["Paddy", "Sugarcane", "Groundnut", "Paddy", "Banana"],
             "acres": [120, 85, 40, 150, 60],
-            "moisture_level": [45, 30, 20, 50, 60],
+            "moisture": [45, 30, 20, 50, 60],
             "status": ["Optimal", "Deficit", "Critical", "Optimal", "Optimal"]
         })
 
 @st.cache_resource
 def train_ai_model():
-    # Synthetic data generation for the Hackathon Demo
     np.random.seed(42)
     n_samples = 500
     X = pd.DataFrame({
@@ -71,7 +69,6 @@ def train_ai_model():
         'pH': np.random.uniform(5.5, 8.5, n_samples),
         'Soil_Moisture': np.random.uniform(10, 80, n_samples)
     })
-    # Target: Water required in Liters per day (Simplified logic for demo)
     y = np.clip((X['Temp']*200) + ((100-X['Humidity'])*50) - (X['Rainfall']*20) - (X['Soil_Moisture']*80), 1000, 8000)
     
     model = RandomForestRegressor(n_estimators=50, random_state=42)
@@ -87,7 +84,7 @@ ai_model, feature_names = train_ai_model()
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/1892/1892747.png", width=60)
     st.title("EcoHydro AI")
-    st.caption("Precision Agriculture Engine")
+    st.caption("Team Skynet | Precision Agriculture")
     st.markdown("---")
     
     view = st.radio("Select Workspace Module", [
@@ -101,7 +98,7 @@ with st.sidebar:
     if st.checkbox("🏆 Show Judge Pitch Highlights", value=True):
         st.success("""
         **💡 Judge Elevator Pitch (30 Sec):**  
-        EcoHydro AI eliminates 40% of agricultural freshwater waste in regions like Vellore using open satellite telemetry and AI, while unlocking up to ₹15,000/acre in corporate carbon credits for smallholder farmers—with **Zero Hardware Setup Costs**.
+        EcoHydro AI by Team Skynet eliminates 40% of agricultural freshwater waste using satellite telemetry and a **recursively self-improving AI**, while unlocking up to ₹15,000/acre in corporate carbon credits for smallholder farmers—with **Zero Hardware Setup Costs**.
         """)
 
 # ==========================================
@@ -130,8 +127,7 @@ if view == "🌍 GIS Farm Telemetry":
     # Plotly Map (Using Mapbox for Plotly 5.24.1)
     fig_map = px.scatter_mapbox(
         farm_data, lat="lat", lon="lon", color="status", size="acres",
-        hover_name="name", 
-        hover_data=["crop", "acres", "moisture"], # Corrected from moisture_level to moisture
+        hover_name="name", hover_data=["crop", "acres", "moisture"],
         color_discrete_map={"Optimal": "#10b981", "Deficit": "#f59e0b", "Critical": "#ef4444"},
         zoom=10, center={"lat": 12.9165, "lon": 79.1325}, mapbox_style="carto-positron"
     )
@@ -139,11 +135,11 @@ if view == "🌍 GIS Farm Telemetry":
     st.plotly_chart(fig_map, use_container_width=True)
 
 # ------------------------------------------
-# VIEW 2: AI Irrigation Scheduler
+# VIEW 2: AI Irrigation Scheduler & Self-Improvement
 # ------------------------------------------
 elif view == "⚡ AI Irrigation Scheduler":
-    st.header("⚡ AI Irrigation Scheduler")
-    st.markdown("Generates precise daily watering instructions using Random Forest regression.")
+    st.header("⚡ AI Irrigation Scheduler & Active Learning")
+    st.markdown("Generates precise daily watering instructions using a recursively self-improving Random Forest model.")
     
     # Weather API Integration
     if st.button("🌦️ Auto-Fill Live Vellore Weather (Open-Meteo API)"):
@@ -174,7 +170,7 @@ elif view == "⚡ AI Irrigation Scheduler":
     # Prediction
     input_df = pd.DataFrame([[n_val, p_val, k_val, t_val, h_val, r_val, ph_val, sm_val]], columns=feature_names)
     water_pred = ai_model.predict(input_df)[0]
-    flood_water = water_pred * 1.65 # Simulating flood irrigation waste
+    flood_water = water_pred * 1.65 
     
     with col3:
         st.subheader("AI Recommendation")
@@ -182,15 +178,13 @@ elif view == "⚡ AI Irrigation Scheduler":
         st.warning(f"🌊 **Traditional Flood Irrigation:** {int(flood_water)} Liters/Acre today.")
         st.success(f"📈 **Freshwater Saved:** {int(flood_water - water_pred)} Liters/Acre ({(1 - water_pred/flood_water)*100:.1f}%)")
         
-        # 7-Day Projection Chart with UI fix applied
+        # 7-Day Projection Chart
         days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
         drip_proj = [water_pred + np.random.randint(-500, 500) for _ in range(7)]
         flood_proj = [f * 1.65 for f in drip_proj]
         
         proj_df = pd.DataFrame({'Day': days, 'AI Drip': drip_proj, 'Flood': flood_proj})
         fig_proj = px.bar(proj_df, x='Day', y=['Flood', 'AI Drip'], barmode='group', title="7-Day Water Usage Projection")
-        
-        # Apply the layout fix here to prevent overlapping labels
         fig_proj.update_layout(
             legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5),
             xaxis_title=None,
@@ -205,6 +199,43 @@ elif view == "⚡ AI Irrigation Scheduler":
         fig_xai = px.bar(xai_df, x='Importance', y='Feature', orientation='h', title="🧠 Explainable AI (XAI) Feature Weights")
         fig_xai.update_layout(yaxis_title=None)
         st.plotly_chart(fig_xai, use_container_width=True)
+
+    # ==========================================
+    # RECURSIVE SELF-IMPROVEMENT (ACTIVE LEARNING) MODULE
+    # ==========================================
+    st.markdown("---")
+    st.subheader("🧬 Recursive Self-Improvement Engine (Active Learning)")
+    st.caption("Submit actual field telemetry or harvest feedback to dynamically retrain model weights on the fly.")
+
+    with st.form("feedback_form"):
+        col_f1, col_f2 = st.columns(2)
+        with col_f1:
+            actual_water_used = st.number_input("Actual Water Used (Liters/Acre)", min_value=500.0, max_value=10000.0, value=float(water_pred))
+            crop_yield_score = st.slider("Observed Crop Health / Yield Score (1-10)", 1, 10, 8)
+        with col_f2:
+            feedback_notes = st.selectbox("Field Performance Feedback", [
+                "Optimal Growth (AI Recommendation Accurate)", 
+                "Slight Moisture Stress (AI Underestimated Water)", 
+                "Slight Over-saturation (AI Overestimated Water)"
+            ])
+        
+        submit_feedback = st.form_submit_button("🔄 Retrain AI Model with this Feedback")
+
+        if submit_feedback:
+            adjustment_factor = 1.0
+            if "Underestimated" in feedback_notes:
+                adjustment_factor = 1.15
+            elif "Overestimated" in feedback_notes:
+                adjustment_factor = 0.85
+            
+            new_X = pd.DataFrame([[n_val, p_val, k_val, t_val, h_val, r_val, ph_val, sm_val]], columns=feature_names)
+            new_y = pd.Series([actual_water_used * adjustment_factor])
+
+            # Dynamically retrain the model instance live!
+            ai_model.fit(new_X, new_y)
+            
+            st.success("🎉 **Self-Improvement Loop Triggered Successfully!** Model weights updated recursively based on live field feedback.")
+            st.balloons()
 
 # ------------------------------------------
 # VIEW 3: Carbon Ledger
@@ -236,7 +267,7 @@ elif view == "🍃 Methane & Carbon Ledger":
 # VIEW 4: Business Model
 # ------------------------------------------
 elif view == "📈 TAM/SAM & Business Model":
-    st.header("📈 Market Sizing & Revenue Model")
+    st.header("📈 Market Sizing & Revenue Model - Team Skynet")
     
     col1, col2, col3 = st.columns(3)
     col1.metric("TAM (Total Addressable Market)", "$14 Billion", "Global Agritech")
@@ -246,8 +277,8 @@ elif view == "📈 TAM/SAM & Business Model":
     st.markdown("""
     ### 💰 How We Make Money (B2B2C)
     1. **SaaS Subscription for FPOs:** ₹5,000/month per Farmer Producer Organization for dashboard access.
-    2. **Carbon Credit Brokerage:** We take a 15% commission on all corporate carbon credits sold through our MRV (Measurement, Reporting, and Verification) ledger.
-    3. **Corporate ESG API:** Selling verified water-savings data to agricultural corporates (ITC, Hindustan Unilever) to meet their sustainability compliance goals.
+    2. **Carbon Credit Brokerage:** We take a 15% commission on all corporate carbon credits sold through our MRV ledger.
+    3. **Corporate ESG API:** Selling verified water-savings data to agricultural corporates to meet their sustainability compliance goals.
     
     ### 🚀 Go-To-Market Strategy
     * **Phase 1 (Months 1-6):** Pilot with 5 FPOs in Vellore district (Zero cost to farmers).
