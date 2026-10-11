@@ -1,4 +1,3 @@
-```python
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -366,4 +365,3 @@ elif page == "TAM/SAM & Business Model":
         </div>
         """, unsafe_allow_html=True)
 ```:app.py
-```
