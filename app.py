@@ -7,13 +7,14 @@ import requests
 import re
 from sklearn.ensemble import RandomForestRegressor
 
+# --- PAGE CONFIGURATION & PREMIUM UI ---
 st.set_page_config(
     page_title="EcoHydro AI | Precision Agriculture OS",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Enterprise UI Design System (Clean, Minimalist, High-Contrast)
+# Clean, minimalist, high-contrast dark theme inspired by Vercel/Stripe
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -21,11 +22,11 @@ st.markdown("""
     /* Base Typography & Background */
     html, body, [class*="css"] {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
-        background-color: #09090b; /* Zinc 950 - Deepest black/gray */
+        background-color: #09090b; /* Zinc 950 - Deepest black */
         color: #e4e4e7; /* Zinc 200 */
     }
     
-    /* Hide Streamlit elements */
+    /* Hide Streamlit dev elements */
     #MainMenu, footer, header {visibility: hidden;}
     
     /* Clean Sidebar */
@@ -34,17 +35,18 @@ st.markdown("""
         border-right: 1px solid #27272a;
     }
     
-    /* Metric Cards - Enterprise Style (Flat, minimal border, sharp corners) */
+    /* Metric Cards - Premium Flat Style */
     [data-testid="metric-container"] {
         background-color: #18181b; /* Zinc 900 */
-        padding: 20px;
+        padding: 24px;
         border-radius: 8px;
         border: 1px solid #27272a;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-        transition: border-color 0.2s ease;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+        transition: border-color 0.2s ease, transform 0.2s ease;
     }
     [data-testid="metric-container"]:hover {
         border-color: #3f3f46;
+        transform: translateY(-2px);
     }
     [data-testid="stMetricLabel"] {
         color: #a1a1aa !important; /* Zinc 400 */
@@ -52,16 +54,18 @@ st.markdown("""
         font-weight: 600;
         letter-spacing: 0.05em;
         text-transform: uppercase;
-        margin-bottom: 4px;
+        margin-bottom: 8px;
     }
     [data-testid="stMetricValue"] {
         color: #fafafa !important; /* Zinc 50 */
-        font-size: 2rem;
+        font-size: 2.2rem;
         font-weight: 700;
+        line-height: 1.2;
     }
     [data-testid="stMetricDelta"] {
         font-size: 0.85rem;
         font-weight: 500;
+        margin-top: 4px;
     }
     
     /* Headers */
@@ -74,21 +78,21 @@ st.markdown("""
         font-size: 1.8rem;
         font-weight: 700;
         color: #ffffff;
-        margin-bottom: 0.5rem;
         border-bottom: 1px solid #27272a;
         padding-bottom: 1rem;
         margin-bottom: 2rem;
     }
     
-    /* HUD Cards */
+    /* HUD Cards for Granular Data */
     .hud-card {
         background-color: #18181b;
         border: 1px solid #27272a;
         border-radius: 8px;
-        padding: 16px 20px;
+        padding: 20px;
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 12px;
+        height: 100%;
     }
     .hud-label {
         font-size: 0.7rem;
@@ -98,7 +102,7 @@ st.markdown("""
         font-weight: 600;
     }
     .hud-value {
-        font-size: 1.1rem;
+        font-size: 1.15rem;
         color: #fafafa;
         font-weight: 500;
     }
@@ -130,7 +134,7 @@ st.markdown("""
         border-radius: 6px !important;
         border: 1px solid #27272a;
     }
-    hr { border-color: #27272a !important; }
+    hr { border-color: #27272a !important; margin: 2rem 0; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -187,14 +191,12 @@ def load_farm_data():
     df = pd.DataFrame()
     try:
         raw_df = pd.read_csv("vellore_farm_data.csv")
-        
-        # 1. Destroy duplicate columns immediately to prevent PyDeck crashes
+        # Strip exact duplicate columns instantly to prevent Pandas reindex errors
         raw_df = raw_df.loc[:, ~raw_df.columns.duplicated()]
         
-        # 2. Standardize column names
+        # Standardize column headers
         raw_df.columns = raw_df.columns.astype(str).str.strip().str.lower()
         
-        # 3. Comprehensive mapping
         col_mapping = {
             'farm': 'name', 'farm name': 'name', 'farm_name': 'name', 'id': 'name',
             'farmer': 'name', 'farmer name': 'name', 'plot': 'name', 'location': 'name', 'village': 'name',
@@ -209,7 +211,7 @@ def load_farm_data():
     except FileNotFoundError:
         pass
 
-    # 4. Fallback Generation if empty
+    # Fallback Generation if empty or completely failed
     if df.empty:
         np.random.seed(42)
         num_farms = 25
@@ -223,7 +225,7 @@ def load_farm_data():
             "crop": np.random.choice(["Paddy Rice", "Sugarcane", "Groundnut"], num_farms)
         })
 
-    # 5. Ensure required columns exist
+    # Ensure required columns exist, mapping defaults if absent
     for col in ['name', 'fpo', 'crop', 'acres', 'moisture', 'lat', 'lon']:
         if col not in df.columns:
             if col == 'fpo': df[col] = "Vellore Agri Hub"
@@ -234,7 +236,7 @@ def load_farm_data():
             elif col == 'lat': df[col] = 12.92
             elif col == 'lon': df[col] = 79.10
 
-    # 6. Override generic names (like "F-01" or "Farm 1") with realistic names
+    # Override generic names (like "F-01" or "Farm 1") with highly realistic regional names
     def enhance_name(val, idx):
         val_str = str(val).strip()
         if re.match(r'^(F-?\d+|\d+|Farm\s*\d+|Plot\s*\d+)$', val_str, re.IGNORECASE):
@@ -244,7 +246,7 @@ def load_farm_data():
 
     df['name'] = [enhance_name(x, i) for i, x in enumerate(df['name'])]
 
-    # 7. Strict Typing
+    # Enforce strict typing to prevent PyDeck backend crashes
     df['name'] = df['name'].astype(str)
     df['fpo'] = df['fpo'].astype(str)
     df['crop'] = df['crop'].astype(str)
@@ -253,16 +255,23 @@ def load_farm_data():
     df['lat'] = pd.to_numeric(df['lat'], errors='coerce').fillna(12.92)
     df['lon'] = pd.to_numeric(df['lon'], errors='coerce').fillna(79.10)
 
-    # 8. Add Status string for tooltip
+    # Add Categorical Status
     df['status'] = pd.cut(
         df['moisture'], 
-        bins=[0, 25, 45, 100], 
+        bins=[-np.inf, 25, 45, np.inf], 
         labels=["Critical", "Deficit", "Optimal"]
     ).astype(str)
 
+    # CRITICAL FIX: Pre-render the entire tooltip string in Pandas.
+    # This bypasses all of PyDeck's HTML/Fullscreen string formatting bugs.
+    df['tooltip_text'] = df.apply(
+        lambda row: f"Farm: {row['name']}\nPartner: {row['fpo']}\nCrop: {row['crop']}\nArea: {row['acres']} Acres\nMoisture: {row['moisture']}% ({row['status']})", 
+        axis=1
+    )
+
     return df
 
-# Load data cleanly on every refresh
+# Load data on refresh
 vellore_farms = load_farm_data()
 
 with st.sidebar:
@@ -299,15 +308,15 @@ if page == "GIS Farm Telemetry":
     st.write("")
     
     if not vellore_farms.empty:
-        # Define accurate color vectors based on status
+        # Map colors safely avoiding fillna(list) errors
         color_map = {
             "Optimal": [16, 185, 129, 255],     # Emerald
             "Deficit": [245, 158, 11, 255],     # Amber
             "Critical": [239, 68, 68, 255]      # Red
         }
-        vellore_farms['color'] = vellore_farms['status'].map(color_map)
+        vellore_farms['color'] = vellore_farms['status'].apply(lambda x: color_map.get(x, [16, 185, 129, 255]))
         
-        # Scatter Layer for base glow
+        # Base Scatter Layer (Glow effect)
         scatter_layer = pdk.Layer(
             "ScatterplotLayer",
             data=vellore_farms,
@@ -315,17 +324,17 @@ if page == "GIS Farm Telemetry":
             get_fill_color="color",
             get_radius="acres * 80",
             pickable=False,
-            opacity=0.4
+            opacity=0.3
         )
         
-        # Column Layer for 3D data representation
+        # 3D Column Layer
         column_layer = pdk.Layer(
             "ColumnLayer",
             data=vellore_farms,
             get_position="[lon, lat]",
             get_elevation="acres",
             elevation_scale=100,
-            radius=300,
+            radius=250,
             get_fill_color="color",
             pickable=True,
             auto_highlight=True,
@@ -336,14 +345,13 @@ if page == "GIS Farm Telemetry":
             latitude=vellore_farms['lat'].mean(),
             longitude=vellore_farms['lon'].mean(),
             zoom=10.5,
-            pitch=50,
-            bearing=-10
+            pitch=45,
+            bearing=-15
         )
         
-        # CRITICAL FIX: Using native "text" tooltip instead of "html".
-        # This completely bypasses Streamlit's DOMPurify, guaranteeing all lines render without cropping.
+        # CRITICAL FIX: Use the pre-rendered string from Pandas with strict whitespace wrap
         safe_tooltip = {
-            "text": "Farm: {name}\nPartner: {fpo}\nCrop: {crop}\nArea: {acres} Acres\nMoisture: {moisture}% ({status})",
+            "text": "{tooltip_text}",
             "style": {
                 "backgroundColor": "#18181b",
                 "color": "#fafafa",
@@ -352,7 +360,8 @@ if page == "GIS Farm Telemetry":
                 "fontSize": "13px",
                 "padding": "12px",
                 "borderRadius": "6px",
-                "zIndex": "99999"
+                "zIndex": 999999, # Push above fullscreen overlay
+                "whiteSpace": "pre-wrap" # Forcing newline parsing
             }
         }
         
@@ -364,6 +373,7 @@ if page == "GIS Farm Telemetry":
             tooltip=safe_tooltip
         )
         
+        # Deprecation fix: replace use_container_width=True with width="stretch"
         st.pydeck_chart(deck, width="stretch")
         
         st.write("")
@@ -387,7 +397,7 @@ if page == "GIS Farm Telemetry":
                             <div class="hud-label">FPO Partner</div>
                             <div class="hud-value">{farm['fpo']}</div>
                         </div>
-                        <div style="margin-top: 8px;">
+                        <div style="margin-top: 4px;">
                             <div class="hud-label">Target Crop</div>
                             <div class="hud-value">{farm['crop']}</div>
                         </div>
@@ -395,14 +405,14 @@ if page == "GIS Farm Telemetry":
                     """, unsafe_allow_html=True)
                     
                 with c2:
-                    status_class = "status-optimal" if farm['moisture'] >= 30 else ("status-deficit" if farm['moisture'] > 20 else "status-critical")
+                    status_class = "status-optimal" if farm['moisture'] >= 45 else ("status-deficit" if farm['moisture'] > 25 else "status-critical")
                     st.markdown(f"""
                     <div class="hud-card {status_class}">
                         <div>
                             <div class="hud-label">Soil Moisture</div>
                             <div class="hud-value">{farm['moisture']}% ({farm['status']})</div>
                         </div>
-                        <div style="margin-top: 8px;">
+                        <div style="margin-top: 4px;">
                             <div class="hud-label">Acreage</div>
                             <div class="hud-value">{farm['acres']} Acres</div>
                         </div>
@@ -416,7 +426,7 @@ if page == "GIS Farm Telemetry":
                             <div class="hud-label">Live Weather (API)</div>
                             <div class="hud-value">{temp} C, {hum}% Hum</div>
                         </div>
-                        <div style="margin-top: 8px;">
+                        <div style="margin-top: 4px;">
                             <div class="hud-label">Protocol Status</div>
                             <div class="hud-value" style="color: #10b981;">Verified Compliant</div>
                         </div>
@@ -435,7 +445,6 @@ elif page == "AI Irrigation Scheduler":
         st.session_state.api_temp = int(t)
         st.session_state.api_hum = int(h)
         st.session_state.api_rain = int(r)
-        st.toast("Weather synchronized.")
     
     st.button("Synchronize Live Weather", on_click=fetch_api_data)
     st.write("")
@@ -497,10 +506,11 @@ elif page == "AI Irrigation Scheduler":
             x='Day', y=['Flood', 'AI Drip'], barmode='group',
             color_discrete_map={"Flood": "#3f3f46", "AI Drip": "#10b981"}
         )
+        # CRITICAL FIX: Increased bottom margin (b=60) to prevent X-axis labels from overlapping with the legend
         fig_chart.update_layout(
-            margin={"r":0,"t":10,"l":0,"b":0}, 
-            height=280, 
-            legend=dict(yanchor="bottom", y=-0.3, xanchor="center", x=0.5, orientation="h"), 
+            margin={"r":0,"t":10,"l":0,"b":60}, 
+            height=300, 
+            legend=dict(yanchor="top", y=-0.25, xanchor="center", x=0.5, orientation="h"), 
             paper_bgcolor="rgba(0,0,0,0)", 
             plot_bgcolor="rgba(0,0,0,0)", 
             font_color="#a1a1aa"
@@ -515,8 +525,8 @@ elif page == "AI Irrigation Scheduler":
             color='Importance', color_continuous_scale="greens"
         )
         fig_importance.update_layout(
-            height=280, 
-            margin={"r":0,"t":10,"l":0,"b":0}, 
+            height=300, 
+            margin={"r":0,"t":10,"l":0,"b":60}, 
             showlegend=False, 
             paper_bgcolor="rgba(0,0,0,0)", 
             plot_bgcolor="rgba(0,0,0,0)", 
