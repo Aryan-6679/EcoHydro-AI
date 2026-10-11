@@ -296,7 +296,8 @@ if page == "GIS Farm Telemetry":
         )
         
         deck = pdk.Deck(
-            map_style="mapbox://styles/mapbox/dark-v10", # Sleek dark mode map
+            map_provider="carto",
+            map_style="dark", 
             layers=[scatter_layer, column_layer],
             initial_view_state=view_state,
             tooltip={
