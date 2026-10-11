@@ -303,46 +303,7 @@ def load_farm_data():
     df['name'] = [enhance_name(x, i) for i, x in enumerate(df['name'])]
 
     df['name'] = df['name'].astype(str)
-    df['fpo'] = df['fpo'].astype(str)
-    df['crop'] = df['crop'].astype(str)
-    df['acres'] = pd.to_numeric(df['acres'], errors='coerce').fillna(10.0).round(1)
-    df['moisture'] = pd.to_numeric(df['moisture'], errors='coerce').fillna(45.0).round(1)
-    df['lat'] = pd.to_numeric(df['lat'], errors='coerce').fillna(12.92)
-    df['lon'] = pd.to_numeric(df['lon'], errors='coerce').fillna(79.10)
-
-    df['status'] = pd.cut(
-        df['moisture'], 
-        bins=[-np.inf, 25, 45, np.inf], 
-        labels=["Critical", "Deficit", "Optimal"]
-    ).astype(str)
-
-    return df
-
-vellore_farms = load_farm_data()
-
-with st.sidebar:
-    st.markdown("<h2 style='color: #fafafa; font-weight: 700; margin-bottom: 0; letter-spacing: -0.05em;'>EcoHydro AI</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #10b981; font-size: 0.75rem; margin-top: 0; margin-bottom: 24px; font-weight: 600; letter-spacing: 0.05em;'>PRECISION AGRICULTURE OS</p>", unsafe_allow_html=True)
-    
-    page = st.radio("WORKSPACE", [
-        "GIS Farm Telemetry",
-        "AI Irrigation Scheduler",
-        "Methane & Carbon Ledger",
-        "TAM/SAM & Business Model",
-    ], label_visibility="collapsed")
-
-if page == "GIS Farm Telemetry":
-    st.markdown("<div class='main-header'>GIS Farm Telemetry</div>", unsafe_allow_html=True)
-    
-    col_m1, col_m2, col_m3, col_m4 = st.columns(4)
-    col_m1.metric("Total Monitored", "4,280 Acres", "+12% vs last month")
-    col_m2.metric("Freshwater Saved", "18.4M Liters", "38.5% efficiency")
-    col_m3.metric("Verified Offsets", "1,420 tCO2e", "AWD Protocol")
-    col_m4.metric("Payout Pool", "INR 28.4L", "85% Yield")
-    
-    st.write("")
-    
-    if not vellore_farms.empty:
+        # Use lambda mapping to prevent Pandas crashing on assigning lists to NaN values
         color_map = {
             "Optimal": [16, 185, 129, 230],     # Emerald
             "Deficit": [245, 158, 11, 230],     # Amber
@@ -350,16 +311,17 @@ if page == "GIS Farm Telemetry":
         }
         vellore_farms['color'] = vellore_farms['status'].apply(lambda x: color_map.get(x, [16, 185, 129, 230]))
         
+        # Base Scatter Layer (Glow effect)
         scatter_layer = pdk.Layer(
             "ScatterplotLayer",
-            data=vellore_farms,
+            id="farm_points",            data=vellore_farms,
             get_position="[lon, lat]",
             get_fill_color="color",
             get_radius="acres * 150", 
-            pickable=False,            
-            opacity=0.4
+            pickable=True,            opacity=0.4
         )
         
+        # 3D Column Layer
         column_layer = pdk.Layer(
             "ColumnLayer",
             data=vellore_farms,
@@ -381,25 +343,63 @@ if page == "GIS Farm Telemetry":
             bearing=-15
         )
         
+        deck_tooltip = {
+            "html": "<b style='color: #10b981;'>{name}</b><br/><span style='font-size: 0.8rem; color: #a1a1aa;'>Click marker to sync side panel</span>",
+            "style": {
+                "backgroundColor": "#18181b",
+                "color": "#fafafa",
+                "zIndex": "2147483647",
+                "border": "1px solid #27272a",
+                "borderRadius": "6px",
+                "padding": "8px"
+            }
+        }
+        
         deck = pdk.Deck(
             map_provider="carto",
             map_style="dark", 
             layers=[scatter_layer, column_layer],
             initial_view_state=view_state,
-            tooltip=False
+            tooltip=deck_tooltip
         )
         
+        # Create a 2-column layout: Map on the left (wider), Drop Box & Details on the right
         col_map, col_details = st.columns([2.5, 1], gap="large")
         
         with col_map:
-            st.pydeck_chart(deck, width="stretch")
+            st.markdown("""
+                <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;'>
+                    <span style='font-size: 0.85rem; color: #a1a1aa; font-weight: 600; text-transform: uppercase;'>Telemetry Map</span>
+                    <span style='font-size: 0.75rem; color: #10b981; background: rgba(16,185,129,0.1); padding: 4px 10px; border-radius: 6px; font-weight: 500;'>👆 Click map markers to sync data</span>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            map_event = st.pydeck_chart(
+                deck, 
+                width="stretch", 
+                on_select="rerun", 
+                selection_mode="single-object"
+            )
             
         with col_details:
             st.markdown("<h4 style='margin-top: 0;'>Target Diagnostics</h4>", unsafe_allow_html=True)
-            farm_names = vellore_farms["name"].unique()
+            farm_names = list(vellore_farms["name"].unique())
             
             if len(farm_names) > 0:
-                selected_farm_name = st.selectbox("Select Target Farm", farm_names, label_visibility="collapsed")
+                clicked_farm_name = None
+                if hasattr(map_event, 'selection') and map_event.selection:
+                    try:
+                        selection_dict = map_event.selection
+                        if "farm_points" in selection_dict and len(selection_dict["farm_points"]) > 0:
+                            clicked_farm_name = selection_dict["farm_points"][0].get("name")
+                    except Exception:
+                        pass
+                
+                default_index = 0
+                if clicked_farm_name in farm_names:
+                    default_index = farm_names.index(clicked_farm_name)
+                    
+                selected_farm_name = st.selectbox("Select Target Farm", farm_names, index=default_index, label_visibility="collapsed")
                 farm_subset = vellore_farms[vellore_farms["name"] == selected_farm_name]
                 
                 if not farm_subset.empty:
