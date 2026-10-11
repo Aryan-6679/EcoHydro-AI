@@ -617,17 +617,17 @@ elif page == "TAM/SAM & Business Model":
         
     with calc_c2:
         st.markdown(f"""
-        <div style="background: linear-gradient(180deg, #18181b 0%, #111113 100%); border: 1px solid #27272a; padding: 32px; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.4);">
+        <div style="background: rgba(24, 24, 27, 0.4); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); border-top: 1px solid rgba(255, 255, 255, 0.15); padding: 32px; border-radius: 16px; box-shadow: 0 4px 20px -2px rgba(0,0,0,0.5);">
             <div style="color: #a1a1aa; font-size: 0.85rem; text-transform: uppercase; font-weight: 600;">Projected Annual Recurring Revenue (ARR)</div>
-            <div style="color: #fafafa; font-size: 3.5rem; font-weight: 700; margin: 8px 0 20px 0;">INR {(total_arr)/100000:.2f}L</div>
-            <div style="display: flex; gap: 32px; border-top: 1px solid #27272a; padding-top: 20px;">
+            <div style="color: #fafafa; font-size: 3.5rem; font-weight: 800; margin: 8px 0 20px 0; letter-spacing: -0.02em;">INR {(total_arr)/100000:.2f}L</div>
+            <div style="display: flex; gap: 32px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 20px;">
                 <div>
-                    <div style="color: #a1a1aa; font-size: 0.75rem; text-transform: uppercase; margin-bottom: 4px;">SaaS Revenue</div>
-                    <div style="color: #fafafa; font-weight: 600; font-size: 1.2rem;">INR {saas_rev/100000:.2f}L</div>
+                    <div style="color: #a1a1aa; font-size: 0.75rem; text-transform: uppercase; margin-bottom: 4px; font-weight: 600;">SaaS Revenue</div>
+                    <div style="color: #fafafa; font-weight: 700; font-size: 1.2rem;">INR {saas_rev/100000:.2f}L</div>
                 </div>
                 <div>
-                    <div style="color: #a1a1aa; font-size: 0.75rem; text-transform: uppercase; margin-bottom: 4px;">Commission (15%)</div>
-                    <div style="color: #10b981; font-weight: 600; font-size: 1.2rem;">INR {carbon_rev/100000:.2f}L</div>
+                    <div style="color: #a1a1aa; font-size: 0.75rem; text-transform: uppercase; margin-bottom: 4px; font-weight: 600;">Commission (15%)</div>
+                    <div style="color: #10b981; font-weight: 700; font-size: 1.2rem;">INR {carbon_rev/100000:.2f}L</div>
                 </div>
             </div>
         </div>
