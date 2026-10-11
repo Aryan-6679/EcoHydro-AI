@@ -124,6 +124,9 @@ def load_farm_data():
     df = pd.DataFrame()
     try:
         df = pd.read_csv("vellore_farm_data.csv")
+        df.columns = df.columns.str.strip().str.lower()
+        if 'area' in df.columns and 'acres' not in df.columns:
+            df['acres'] = df['area']
     except FileNotFoundError:
         pass
     
@@ -142,15 +145,22 @@ def load_farm_data():
             "fpo": np.random.choice(["North Arcot Farmers", "Palar River Basin", "Walajah Organics"], num_farms),
             "crop": np.random.choice(["Paddy Rice", "Sugarcane", "Groundnut"], num_farms)
         })
+        
+    if 'name' not in df.columns: df['name'] = [f"Farm-0{i+1}" for i in range(len(df))]
+    if 'fpo' not in df.columns: df['fpo'] = "Vellore Agri Hub"
+    if 'crop' not in df.columns: df['crop'] = "Mixed Crop"
+    if 'acres' not in df.columns: df['acres'] = 10.0
+    if 'moisture' not in df.columns: df['moisture'] = 45.0
+    
+    df['name'] = df['name'].astype(str).fillna('Unknown')
+    df['fpo'] = df['fpo'].astype(str).fillna('Unknown')
+    df['crop'] = df['crop'].astype(str).fillna('Unknown')
+    df['acres'] = pd.to_numeric(df['acres'], errors='coerce').fillna(10.0).round(1)
+    df['moisture'] = pd.to_numeric(df['moisture'], errors='coerce').fillna(45.0).round(1)
+    
     return df
 
 vellore_farms = load_farm_data()
-
-if 'fpo' not in vellore_farms.columns: vellore_farms['fpo'] = "Vellore Agri Hub"
-if 'crop' not in vellore_farms.columns: vellore_farms['crop'] = "Mixed Crop"
-if 'name' not in vellore_farms.columns: vellore_farms['name'] = [f"Farm-0{i+1}" for i in range(len(vellore_farms))]
-if 'moisture' not in vellore_farms.columns: vellore_farms['moisture'] = 45.0
-if 'acres' not in vellore_farms.columns: vellore_farms['acres'] = 10.0
 
 # Calculate status based on moisture
 vellore_farms['status'] = pd.cut(
@@ -229,20 +239,26 @@ if page == "GIS Farm Telemetry":
             bearing=-15
         )
         
-        # Ensure the tooltip HTML is simple standard tags to prevent bounding box collapse
+        tooltip_html = (
+            "<table style='color: #f8fafc; font-family: sans-serif; font-size: 13px; border-spacing: 4px; border-collapse: separate;'>"
+            "<tr><td><b>Farm:</b></td><td style='padding-left: 8px;'>{name}</td></tr>"
+            "<tr><td><b>FPO:</b></td><td style='padding-left: 8px;'>{fpo}</td></tr>"
+            "<tr><td><b>Crop:</b></td><td style='padding-left: 8px;'>{crop}</td></tr>"
+            "<tr><td><b>Area:</b></td><td style='padding-left: 8px;'>{acres} Acres</td></tr>"
+            "<tr><td><b>Moisture:</b></td><td style='padding-left: 8px;'>{moisture}% ({status})</td></tr>"
+            "</table>"
+        )
+        
         tooltip_config = {
-            "html": "<b>{name}</b><br/>FPO: {fpo}<br/>Crop: {crop}<br/>Area: {acres} Acres<br/>Moisture: {moisture}% ({status})",
+            "html": tooltip_html,
             "style": {
                 "backgroundColor": "#0f172a",
-                "color": "#f8fafc",
-                "borderRadius": "8px",
-                "padding": "16px",
                 "border": "1px solid #10b981",
-                "fontFamily": "sans-serif",
-                "fontSize": "14px",
-                "whiteSpace": "nowrap",
-                "minWidth": "220px",
-                "boxShadow": "0 10px 25px rgba(0,0,0,0.5)"
+                "borderRadius": "8px",
+                "padding": "12px",
+                "boxShadow": "0 10px 25px rgba(0,0,0,0.5)",
+                "minWidth": "240px",
+                "whiteSpace": "nowrap"
             }
         }
         
