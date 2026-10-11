@@ -6,14 +6,12 @@ import pydeck as pdk
 import requests
 from sklearn.ensemble import RandomForestRegressor
 
-# --- PAGE CONFIGURATION & PREMIUM UI ---
 st.set_page_config(
     page_title="EcoHydro AI - Precision Agriculture Platform",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# --- CUSTOM CSS STYLING ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap');
@@ -69,7 +67,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- MACHINE LEARNING MODEL SIMULATION ---
 @st.cache_resource
 def load_and_train_models():
     """Generates synthetic data and trains a RandomForest for water requirement prediction."""
@@ -122,51 +119,46 @@ def get_live_weather(lat, lon):
         pass
     return 32.5, 65.0, 0.0
 
-@st.cache_data
 def load_farm_data():
     """Load from CSV, or generate realistic fallback data if CSV is missing."""
+    df = pd.DataFrame()
     try:
         df = pd.read_csv("vellore_farm_data.csv")
-        if not df.empty:
-            # Ensure required columns exist for the tooltip to prevent rendering errors
-            if 'fpo' not in df.columns: df['fpo'] = "Vellore Agri Hub"
-            if 'crop' not in df.columns: df['crop'] = "Mixed Crop"
-            if 'name' not in df.columns: df['name'] = [f"Farm-0{i}" for i in range(len(df))]
-            if 'moisture' not in df.columns: df['moisture'] = 45.0
-            if 'acres' not in df.columns: df['acres'] = 10.0
-            if 'status' not in df.columns:
-                df['status'] = pd.cut(df['moisture'], bins=[0, 25, 45, 100], labels=["Critical", "Deficit", "Optimal"]).astype(str)
-            return df
     except FileNotFoundError:
         pass
     
-    # Fallback to ensure the map always looks incredible even without the CSV
-    np.random.seed(42)
-    num_farms = 25
-    center_lat, center_lon = 12.92, 79.10
-    
-    fallback_df = pd.DataFrame({
-        "name": [f"Vellore Sector {i+1}" for i in range(num_farms)],
-        "lat": center_lat + np.random.uniform(-0.15, 0.15, num_farms),
-        "lon": center_lon + np.random.uniform(-0.15, 0.15, num_farms),
-        "moisture": np.random.uniform(15, 60, num_farms).round(1),
-        "acres": np.random.uniform(5, 45, num_farms).round(1),
-        "fpo": np.random.choice(["North Arcot Farmers", "Palar River Basin", "Walajah Organics"], num_farms),
-        "crop": np.random.choice(["Paddy Rice", "Sugarcane", "Groundnut"], num_farms)
-    })
-    
-    # Categorize status based on moisture
-    fallback_df['status'] = pd.cut(
-        fallback_df['moisture'], 
-        bins=[0, 25, 45, 100], 
-        labels=["Critical", "Deficit", "Optimal"]
-    ).astype(str)
-    
-    return fallback_df
+    # Generate fallback if CSV failed or is empty
+    if df.empty:
+        np.random.seed(42)
+        num_farms = 25
+        center_lat, center_lon = 12.92, 79.10
+        
+        df = pd.DataFrame({
+            "name": [f"Vellore Sector {i+1}" for i in range(num_farms)],
+            "lat": center_lat + np.random.uniform(-0.15, 0.15, num_farms),
+            "lon": center_lon + np.random.uniform(-0.15, 0.15, num_farms),
+            "moisture": np.random.uniform(15, 60, num_farms).round(1),
+            "acres": np.random.uniform(5, 45, num_farms).round(1),
+            "fpo": np.random.choice(["North Arcot Farmers", "Palar River Basin", "Walajah Organics"], num_farms),
+            "crop": np.random.choice(["Paddy Rice", "Sugarcane", "Groundnut"], num_farms)
+        })
+    return df
 
 vellore_farms = load_farm_data()
 
-# --- SIDEBAR NAVIGATION ---
+if 'fpo' not in vellore_farms.columns: vellore_farms['fpo'] = "Vellore Agri Hub"
+if 'crop' not in vellore_farms.columns: vellore_farms['crop'] = "Mixed Crop"
+if 'name' not in vellore_farms.columns: vellore_farms['name'] = [f"Farm-0{i+1}" for i in range(len(vellore_farms))]
+if 'moisture' not in vellore_farms.columns: vellore_farms['moisture'] = 45.0
+if 'acres' not in vellore_farms.columns: vellore_farms['acres'] = 10.0
+
+# Calculate status based on moisture
+vellore_farms['status'] = pd.cut(
+    vellore_farms['moisture'], 
+    bins=[0, 25, 45, 100], 
+    labels=["Critical", "Deficit", "Optimal"]
+).astype(str)
+
 with st.sidebar:
     st.markdown("<h2 style='margin-top: -10px; margin-bottom: 0px;'>EcoHydro AI</h2>", unsafe_allow_html=True)
     st.caption("Precision Ag v2.5 PRO")
@@ -183,7 +175,6 @@ with st.sidebar:
     st.caption("System Status: All Sensors Online")
     st.caption("Last Sync: Just Now")
 
-# --- PAGE 1: GIS TELEMETRY ---
 if page == "GIS Farm Telemetry":
     st.markdown("<h1 class='gradient-text'>3D Interactive Farm Telemetry</h1>", unsafe_allow_html=True)
     st.write("Live multispectral soil moisture and crop status across onboarded Farmer Producer Organizations.")
@@ -238,24 +229,29 @@ if page == "GIS Farm Telemetry":
             bearing=-15
         )
         
+        # Ensure the tooltip HTML is simple standard tags to prevent bounding box collapse
+        tooltip_config = {
+            "html": "<b>{name}</b><br/>FPO: {fpo}<br/>Crop: {crop}<br/>Area: {acres} Acres<br/>Moisture: {moisture}% ({status})",
+            "style": {
+                "backgroundColor": "#0f172a",
+                "color": "#f8fafc",
+                "borderRadius": "8px",
+                "padding": "16px",
+                "border": "1px solid #10b981",
+                "fontFamily": "sans-serif",
+                "fontSize": "14px",
+                "whiteSpace": "nowrap",
+                "minWidth": "220px",
+                "boxShadow": "0 10px 25px rgba(0,0,0,0.5)"
+            }
+        }
+        
         deck = pdk.Deck(
             map_provider="carto",
             map_style="dark", 
             layers=[scatter_layer, column_layer],
             initial_view_state=view_state,
-            tooltip={
-                "html": "<div style='width: 220px; white-space: normal; line-height: 1.5; word-wrap: break-word;'><b>{name}</b><hr style='margin: 6px 0; border: 0; border-top: 1px solid rgba(255,255,255,0.15);' /><b>FPO:</b> {fpo}<br/><b>Crop:</b> {crop}<br/><b>Area:</b> {acres} Acres<br/><b>Moisture:</b> {moisture}% ({status})</div>",
-                "style": {
-                    "backgroundColor": "rgba(15, 23, 42, 0.95)",
-                    "color": "#f8fafc",
-                    "borderRadius": "8px",
-                    "padding": "12px",
-                    "border": "1px solid rgba(52, 211, 153, 0.4)",
-                    "boxShadow": "0 10px 25px rgba(0,0,0,0.5)",
-                    "fontFamily": "sans-serif",
-                    "fontSize": "13px"
-                }
-            }
+            tooltip=tooltip_config
         )
         
         st.pydeck_chart(deck, width="stretch")
@@ -279,7 +275,6 @@ if page == "GIS Farm Telemetry":
                 st.success(f"**Live Local Weather:**\n{temp} C, {hum}% Humidity")
                 st.success(f"**AWD Compliance:**\nVerified Compliant")
 
-# --- PAGE 2: AI IRRIGATION SCHEDULER ---
 elif page == "AI Irrigation Scheduler":
     st.markdown("<h1 class='gradient-text'>AI Irrigation Simulator</h1>", unsafe_allow_html=True)
     st.write("Dynamically calculates precise water requirements to eliminate flood irrigation waste.")
@@ -358,7 +353,6 @@ elif page == "AI Irrigation Scheduler":
         fig_importance.update_layout(height=300, margin={"r":0,"t":0,"l":0,"b":0}, showlegend=False, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
         st.plotly_chart(fig_importance, width="stretch")
 
-# --- PAGE 3: CARBON LEDGER ---
 elif page == "Methane & Carbon Ledger":
     st.markdown("<h1 class='gradient-text'>AWD Carbon Protocol Engine</h1>", unsafe_allow_html=True)
     st.write("Verifies methane emission reductions via satellite radar (SAR) to mint high-quality ESG carbon credits.")
@@ -385,12 +379,11 @@ elif page == "Methane & Carbon Ledger":
             "Status": st.column_config.TextColumn("Status")
         },
         hide_index=True,
-        width="stretch"
+        use_container_width=True
     )
     
     st.download_button("Download SEBI BRSR ESG Report (CSV)", data=ledger_data.to_csv(index=False).encode('utf-8'), file_name='EcoHydro_Carbon_Audit.csv', mime='text/csv', width="stretch")
 
-# --- PAGE 4: BUSINESS MODEL ---
 elif page == "TAM/SAM & Business Model":
     st.markdown("<h1 class='gradient-text'>Financial Projections & Market Sizing</h1>", unsafe_allow_html=True)
     st.write("EcoHydro AI leverages a dual-revenue stream: B2B SaaS for FPOs and a 15% marketplace commission on carbon credits.")
