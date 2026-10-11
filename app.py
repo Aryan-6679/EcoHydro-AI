@@ -14,55 +14,75 @@ st.set_page_config(
 
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
     
     html, body, [class*="css"] {
-        font-family: 'Plus Jakarta Sans', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
+        background-color: #0b0f19;
     }
     
-    /* Glassmorphism Metric Cards */
+    /* Premium Glassmorphism Metric Cards */
     [data-testid="metric-container"] {
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.9));
-        padding: 20px 24px;
-        border-radius: 16px;
-        border: 1px solid rgba(16, 185, 129, 0.2);
-        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-        transition: all 0.3s ease;
+        background: rgba(17, 24, 39, 0.7);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        padding: 24px;
+        border-radius: 20px;
+        border: 1px solid rgba(16, 185, 129, 0.15);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
     
     [data-testid="metric-container"]:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 8px 25px rgba(16, 185, 129, 0.15);
-        border-color: rgba(16, 185, 129, 0.5);
+        transform: translateY(-5px);
+        box-shadow: 0 10px 40px rgba(16, 185, 129, 0.2);
+        border-color: rgba(16, 185, 129, 0.6);
     }
 
     /* Metric Label & Value Styling */
     [data-testid="stMetricLabel"] {
         font-weight: 600;
-        color: #94a3b8 !important;
+        color: #9ca3af !important;
         text-transform: uppercase;
-        letter-spacing: 0.05em;
-        font-size: 0.85rem;
+        letter-spacing: 0.1em;
+        font-size: 0.8rem;
     }
     [data-testid="stMetricValue"] {
         font-weight: 800;
-        color: #f8fafc !important;
-        font-size: 2.2rem;
+        color: #f3f4f6 !important;
+        font-size: 2.5rem;
+    }
+    [data-testid="stMetricDelta"] {
+        font-weight: 600;
+        font-size: 0.95rem;
     }
     
-    /* Gradients */
-    h1, h2, h3 { color: #f8fafc !important; }
+    /* Beautiful Gradients for Headers */
+    h1, h2, h3 { color: #f9fafb !important; }
     .gradient-text {
-        background: -webkit-linear-gradient(45deg, #10b981, #06b6d4);
+        background: linear-gradient(135deg, #34d399 0%, #06b6d4 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         font-weight: 800;
+        letter-spacing: -0.02em;
+        margin-bottom: 1.5rem;
     }
     
-    /* Custom Sidebar styling */
+    /* Sidebar Styling */
     section[data-testid="stSidebar"] {
-        background-color: #0f172a;
+        background-color: #111827;
         border-right: 1px solid rgba(255,255,255,0.05);
+    }
+    
+    /* Customizing Expanders */
+    .streamlit-expanderHeader {
+        background-color: rgba(31, 41, 55, 0.5) !important;
+        border-radius: 10px !important;
+        font-weight: 600 !important;
+    }
+    
+    hr {
+        border-color: rgba(255,255,255,0.08) !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -82,7 +102,6 @@ def load_and_train_models():
     rainfall = np.random.uniform(0, 300, n_samples)
     soil_moisture = np.random.uniform(10, 80, n_samples)
     
-    # Base calculation for water requirement
     base_water = (temp * 150) + ((100 - humidity) * 40) - (rainfall * 10) - (soil_moisture * 50)
     water_req = np.clip(base_water, 1500, 9000)
     
@@ -119,14 +138,18 @@ def get_live_weather(lat, lon):
     return 32.5, 65.0, 0.0
 
 def load_farm_data():
-    """Robustly load and sanitize farm data to prevent PyDeck tooltip crashes."""
+    """Robustly load and sanitize farm data, strictly removing duplicate columns."""
     df = pd.DataFrame()
     try:
         df = pd.read_csv("vellore_farm_data.csv")
-        # Normalize column names to lowercase and strip whitespace
+        
+        # 1. Clean column strings completely
         df.columns = df.columns.astype(str).str.strip().str.lower()
         
-        # Handle possible alternate column names from the CSV
+        # 2. CRITICAL FIX: Drop any duplicate columns before renaming (prevents the pandas/PyDeck crash)
+        df = df.loc[:, ~df.columns.duplicated()]
+        
+        # 3. Rename custom CSV headers to standard app variables
         col_mapping = {
             'farm': 'name', 'farm name': 'name', 'farm_name': 'name', 'id': 'name',
             'area': 'acres', 'area (acres)': 'acres', 'size': 'acres',
@@ -135,10 +158,13 @@ def load_farm_data():
         }
         df.rename(columns=col_mapping, inplace=True)
         
+        # 4. CRITICAL FIX: Drop duplicates again just in case the mapping created clashes
+        df = df.loc[:, ~df.columns.duplicated()]
+        
     except FileNotFoundError:
         pass
     
-    # Generate beautiful 3D fallback data if CSV is empty or missing
+    # 5. Generate beautiful 3D fallback data if CSV is empty or missing
     if df.empty:
         np.random.seed(42)
         num_farms = 25
@@ -154,7 +180,7 @@ def load_farm_data():
             "crop": np.random.choice(["Paddy Rice", "Sugarcane", "Groundnut"], num_farms)
         })
         
-    # GUARANTEE all required columns exist so PyDeck tooltips NEVER crash
+    # 6. GUARANTEE all required columns exist and are safely formatted for PyDeck HTML injection
     if 'name' not in df.columns: df['name'] = [f"Farm-0{i+1}" for i in range(len(df))]
     if 'fpo' not in df.columns: df['fpo'] = "Vellore Agri Hub"
     if 'crop' not in df.columns: df['crop'] = "Mixed Crop"
@@ -163,10 +189,9 @@ def load_farm_data():
     if 'lat' not in df.columns: df['lat'] = 12.92
     if 'lon' not in df.columns: df['lon'] = 79.10
     
-    # Cast to exact data types. If a value is NaN, replace it with a string/float so the PyDeck template parser doesn't break
-    df['name'] = df['name'].fillna('Unknown Farm').astype(str)
-    df['fpo'] = df['fpo'].fillna('Unknown FPO').astype(str)
-    df['crop'] = df['crop'].fillna('Unknown Crop').astype(str)
+    df['name'] = df['name'].fillna('Unknown').astype(str)
+    df['fpo'] = df['fpo'].fillna('Unknown').astype(str)
+    df['crop'] = df['crop'].fillna('Unknown').astype(str)
     df['acres'] = pd.to_numeric(df['acres'], errors='coerce').fillna(10.0).round(1)
     df['moisture'] = pd.to_numeric(df['moisture'], errors='coerce').fillna(45.0).round(1)
     df['lat'] = pd.to_numeric(df['lat'], errors='coerce').fillna(12.92)
@@ -184,16 +209,16 @@ vellore_farms['status'] = pd.cut(
 ).astype(str)
 
 with st.sidebar:
-    st.markdown("<h2 style='margin-top: -10px; margin-bottom: 0px;'>EcoHydro AI</h2>", unsafe_allow_html=True)
-    st.caption("Precision Ag v2.5 PRO")
+    st.markdown("<h2 style='margin-top: -10px; margin-bottom: 0px; font-weight: 800; color: #10b981 !important;'>EcoHydro AI</h2>", unsafe_allow_html=True)
+    st.caption("Precision Ag v3.0 PRO")
     
     st.divider()
-    page = st.radio("Select Workspace Module", [
+    page = st.radio("Workspace Module", [
         "GIS Farm Telemetry",
         "AI Irrigation Scheduler",
         "Methane & Carbon Ledger",
         "TAM/SAM & Business Model",
-    ])
+    ], label_visibility="collapsed")
     
     st.divider()
     st.caption("System Status: All Sensors Online")
@@ -208,58 +233,57 @@ if page == "GIS Farm Telemetry":
     col_m1.metric("Total Monitored Land", "4,280 Acres", "+12% this month")
     col_m2.metric("Freshwater Saved", "18.4M Liters", "38.5% vs Flood")
     col_m3.metric("Verified CO2 Offsets", "1,420 tCO2e", "AWD Method")
-    col_m4.metric("Farmer Payout Pool", "INR 28.4 Lakhs", "85% to Farmers")
+    col_m4.metric("Farmer Payout Pool", "INR 28.4 Lakhs", "85% Yield")
     
+    st.write("")
     if not vellore_farms.empty:
         color_map = {
             "Optimal": [16, 185, 129, 255],     # Green
-            "Deficit": [245, 158, 11, 255],     # Yellow/Orange
+            "Deficit": [245, 158, 11, 255],     # Yellow
             "Critical": [239, 68, 68, 255]      # Red
         }
         vellore_farms['color'] = vellore_farms['status'].map(color_map)
         
-        # Base Scatter Layer (Glow effect on the ground)
+        # Glow Effect Layer
         scatter_layer = pdk.Layer(
             "ScatterplotLayer",
             data=vellore_farms,
             get_position="[lon, lat]",
             get_fill_color="color",
-            get_radius="acres * 50",
+            get_radius="acres * 60",
             pickable=False,
-            opacity=0.3
+            opacity=0.4
         )
         
-        # 3D Column Layer (Height represents acres)
+        # 3D Column Layer
         column_layer = pdk.Layer(
             "ColumnLayer",
             data=vellore_farms,
             get_position="[lon, lat]",
             get_elevation="acres",
-            elevation_scale=120,
-            radius=450,
+            elevation_scale=150,
+            radius=350,
             get_fill_color="color",
             pickable=True,
             auto_highlight=True,
             extruded=True
         )
         
-        # Dramatic 3D View State
         view_state = pdk.ViewState(
-            latitude=12.92,
-            longitude=79.10,
-            zoom=10.8,
-            pitch=55,
-            bearing=-15
+            latitude=vellore_farms['lat'].mean(),
+            longitude=vellore_farms['lon'].mean(),
+            zoom=10.2,
+            pitch=50,
+            bearing=-10
         )
         
-        # Using basic HTML tags because Streamlit's PyDeck integration aggressively 
-        # sanitizes (DOMPurify) complex tags like <table>, causing data deletion.
+        # Streamlit-safe tooltip mapping without complex nested HTML
         tooltip_html = (
-            "<b style='color: #10b981; font-size: 16px;'>Farm: {name}</b><br/>"
-            "<b>FPO Partner:</b> {fpo}<br/>"
-            "<b>Harvest Crop:</b> {crop}<br/>"
-            "<b>Field Area:</b> {acres} Acres<br/>"
-            "<b style='color: #fbbf24;'>Soil Moisture:</b> {moisture}% ({status})"
+            "<b>Farm:</b> {name} <br/>"
+            "<b>FPO Partner:</b> {fpo} <br/>"
+            "<b>Harvest Crop:</b> {crop} <br/>"
+            "<b>Field Area:</b> {acres} Acres <br/>"
+            "<b>Soil Moisture:</b> {moisture}% ({status})"
         )
         
         deck = pdk.Deck(
@@ -270,15 +294,15 @@ if page == "GIS Farm Telemetry":
             tooltip={
                 "html": tooltip_html,
                 "style": {
-                    "backgroundColor": "#0f172a",
-                    "color": "#f8fafc",
+                    "backgroundColor": "#111827",
+                    "color": "#f3f4f6",
                     "border": "1px solid #10b981",
-                    "borderRadius": "8px",
-                    "padding": "16px",
-                    "boxShadow": "0 10px 30px rgba(0,0,0,0.6)",
-                    "whiteSpace": "nowrap",
-                    "lineHeight": "1.6",
-                    "fontFamily": "sans-serif",
+                    "borderRadius": "10px",
+                    "padding": "15px",
+                    "boxShadow": "0 10px 30px rgba(0,0,0,0.8)",
+                    "fontFamily": "Inter, sans-serif",
+                    "fontSize": "14px",
+                    "lineHeight": "1.8",
                     "zIndex": "99999"
                 }
             }
@@ -286,24 +310,29 @@ if page == "GIS Farm Telemetry":
         
         st.pydeck_chart(deck, width="stretch")
         
+        # Granular Analysis Section
         st.write("")
         st.markdown("### Granular Field Analysis")
-        selected_farm_name = st.selectbox("Select Farm for Inspection", vellore_farms["name"], label_visibility="collapsed")
+        selected_farm_name = st.selectbox("Select Farm for Inspection", vellore_farms["name"].unique(), label_visibility="collapsed")
         
-        farm = vellore_farms[vellore_farms["name"] == selected_farm_name].iloc[0]
-        temp, hum, precip = get_live_weather(farm['lat'], farm['lon'])
+        # Securely extract the first match to prevent index errors
+        farm_subset = vellore_farms[vellore_farms["name"] == selected_farm_name]
         
-        with st.container():
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                st.info(f"**FPO Partner:**\n{farm['fpo']}")
-                st.info(f"**Target Crop:**\n{farm['crop']}")
-            with c2:
-                st.warning(f"**Soil Moisture:**\n{farm['moisture']}% ({'Optimal' if farm['moisture'] >= 30 else 'Deficit'})")
-                st.warning(f"**Acreage:**\n{farm['acres']} Acres")
-            with c3:
-                st.success(f"**Live Local Weather:**\n{temp} C, {hum}% Humidity")
-                st.success(f"**AWD Compliance:**\nVerified Compliant")
+        if not farm_subset.empty:
+            farm = farm_subset.iloc[0]
+            temp, hum, precip = get_live_weather(farm['lat'], farm['lon'])
+            
+            with st.container():
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    st.info(f"**FPO Partner:**\n{farm['fpo']}")
+                    st.info(f"**Target Crop:**\n{farm['crop']}")
+                with c2:
+                    st.warning(f"**Soil Moisture:**\n{farm['moisture']}% ({'Optimal' if farm['moisture'] >= 30 else 'Deficit'})")
+                    st.warning(f"**Acreage:**\n{farm['acres']} Acres")
+                with c3:
+                    st.success(f"**Live Local Weather:**\n{temp} C, {hum}% Humidity")
+                    st.success(f"**AWD Compliance:**\nVerified Compliant")
 
 elif page == "AI Irrigation Scheduler":
     st.markdown("<h1 class='gradient-text'>AI Irrigation Simulator</h1>", unsafe_allow_html=True)
@@ -323,7 +352,7 @@ elif page == "AI Irrigation Scheduler":
     st.button("Auto-Fill Live Vellore Weather", on_click=fetch_api_data, width="stretch")
     st.write("")
     
-    col_inputs, col_results = st.columns([1.2, 1])
+    col_inputs, col_results = st.columns([1.2, 1], gap="large")
     with col_inputs:
         with st.expander("Farm & Soil Parameters", expanded=True):
             crop_type = st.selectbox("Target Crop", ["Paddy Rice", "Sugarcane", "Groundnut", "Maize"])
@@ -350,7 +379,7 @@ elif page == "AI Irrigation Scheduler":
         flood_water = 8500 * acres
         water_saved = max(0, flood_water - pred_water)
         
-        st.markdown("### Optimization Results")
+        st.markdown("<h3 style='margin-top: 0;'>Optimization Results</h3>", unsafe_allow_html=True)
         st.metric("Traditional Flood Volume", f"{int(flood_water):,} L/Day")
         
         if pred_water == 0:
@@ -361,7 +390,13 @@ elif page == "AI Irrigation Scheduler":
             progress_pct = int((pred_water/flood_water)*100)
             
         st.progress(progress_pct, text=f"AI uses only {progress_pct}% of traditional flood water.")
-        st.success(f"Monthly Power/Pumping Cost Saved: INR {int(water_saved * 30 * 0.012):,}")
+        
+        st.markdown(f"""
+        <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 15px; border-radius: 12px; margin-top: 20px;">
+            <b style="color: #10b981;">Monthly Pumping Cost Saved:</b><br/>
+            <span style="font-size: 1.5rem; font-weight: 800; color: white;">INR {int(water_saved * 30 * 0.012):,}</span>
+        </div>
+        """, unsafe_allow_html=True)
     
     st.divider()
     
@@ -374,19 +409,20 @@ elif page == "AI Irrigation Scheduler":
             x='Day', y=['Flood', 'AI Drip'], barmode='group',
             color_discrete_map={"Flood": "#ef4444", "AI Drip": "#10b981"}
         )
-        fig_chart.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, height=300, legend=dict(yanchor="bottom", y=-0.5, xanchor="center", x=0.5), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        fig_chart.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, height=300, legend=dict(yanchor="bottom", y=-0.5, xanchor="center", x=0.5), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#9ca3af")
         st.plotly_chart(fig_chart, width="stretch")
             
     with c_explain:
         st.markdown("#### Explainable AI Weights")
         fig_importance = px.bar(feature_importance, x='Importance', y='Feature', orientation='h', color='Importance', color_continuous_scale="Tealgrn")
-        fig_importance.update_layout(height=300, margin={"r":0,"t":0,"l":0,"b":0}, showlegend=False, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        fig_importance.update_layout(height=300, margin={"r":0,"t":0,"l":0,"b":0}, showlegend=False, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#9ca3af")
         st.plotly_chart(fig_importance, width="stretch")
 
 elif page == "Methane & Carbon Ledger":
     st.markdown("<h1 class='gradient-text'>AWD Carbon Protocol Engine</h1>", unsafe_allow_html=True)
     st.write("Verifies methane emission reductions via satellite radar (SAR) to mint high-quality ESG carbon credits.")
     
+    st.write("")
     c1, c2, c3 = st.columns(3)
     c1.metric("Total Credits Minted", "1,314 tCO2e", "+200 this week")
     c2.metric("Market Price per tCO2e", "INR 1,530", "+ INR 45 vs last month")
@@ -409,7 +445,7 @@ elif page == "Methane & Carbon Ledger":
             "Status": st.column_config.TextColumn("Status")
         },
         hide_index=True,
-        use_container_width=True
+        width="stretch"
     )
     
     st.download_button("Download SEBI BRSR ESG Report (CSV)", data=ledger_data.to_csv(index=False).encode('utf-8'), file_name='EcoHydro_Carbon_Audit.csv', mime='text/csv', width="stretch")
@@ -427,7 +463,7 @@ elif page == "TAM/SAM & Business Model":
     st.write("---")
     st.markdown("### Interactive Monetization Calculator")
     
-    calc_c1, calc_c2 = st.columns([1, 1.5])
+    calc_c1, calc_c2 = st.columns([1, 1.5], gap="large")
     with calc_c1:
         st.info("Adjust the sliders to simulate Year-1 Revenue")
         fpos = st.slider("Onboarded FPOs", 5, 300, 30)
@@ -439,13 +475,13 @@ elif page == "TAM/SAM & Business Model":
         
     with calc_c2:
         st.markdown(f"""
-        <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 25px; border-radius: 16px;">
-            <h4 style="margin-top: 0; color: #94a3b8; font-size: 0.9rem; text-transform: uppercase;">Projected Annual Recurring Revenue (ARR)</h4>
-            <h1 style="color: #10b981; font-size: 3rem; margin: 10px 0;">INR {(total_arr)/100000:.2f} Lakhs/Yr</h1>
-            <hr style="border-color: rgba(255,255,255,0.1); margin: 15px 0;">
-            <div style="display: flex; justify-content: space-between; font-size: 1.1rem;">
-                <span><b>SaaS Subscriptions:</b> INR {saas_rev/100000:.2f}L</span>
-                <span><b>Carbon Commission:</b> INR {carbon_rev/100000:.2f}L</span>
+        <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.4); padding: 35px; border-radius: 20px; box-shadow: 0 10px 40px rgba(16, 185, 129, 0.1);">
+            <h4 style="margin-top: 0; color: #9ca3af; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em;">Projected Annual Recurring Revenue</h4>
+            <h1 style="color: #10b981; font-size: 3.5rem; margin: 15px 0; font-weight: 800;">INR {(total_arr)/100000:.2f} Lakhs</h1>
+            <hr style="border-color: rgba(255,255,255,0.1); margin: 20px 0;">
+            <div style="display: flex; justify-content: space-between; font-size: 1.15rem; color: #e5e7eb;">
+                <span><b>SaaS Subscriptions:</b><br/>INR {saas_rev/100000:.2f}L / Year</span>
+                <span style="text-align: right;"><b>Carbon Commission:</b><br/>INR {carbon_rev/100000:.2f}L / Year</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
