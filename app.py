@@ -330,8 +330,8 @@ if page == "GIS Farm Telemetry":
             data=vellore_farms,
             get_position="[lon, lat]",
             get_fill_color="color",
-            get_radius="acres * 70",
-            pickable=False,
+            get_radius="acres * 150", # Increased radius to make hovering effortless
+            pickable=True,            # ENABLE picking here so the tooltip anchors to the 2D ground
             opacity=0.4
         )
         
@@ -341,10 +341,10 @@ if page == "GIS Farm Telemetry":
             data=vellore_farms,
             get_position="[lon, lat]",
             get_elevation="acres",
-            elevation_scale=100,
-            radius=200,
+            elevation_scale=60,       # Lowered scale to keep visuals clean and proportionate
+            radius=150,
             get_fill_color="color",
-            pickable=True,
+            pickable=False,           # DISABLE picking here to fix the 3D vertical offset bug
             auto_highlight=True,
             extruded=True
         )
@@ -358,9 +358,6 @@ if page == "GIS Farm Telemetry":
         )
         
         # FOOLPROOF NATIVE TOOLTIP:
-        # We strip ALL custom CSS sizing, padding, and inner divs. 
-        # This allows PyDeck's internal Javascript to perfectly calculate the physical bounding box,
-        # ensuring it correctly auto-flips away from the edges of the screen/iframe without clipping.
         deck_tooltip = {
             "html": "<b style='color: #10b981;'>{name}</b><br/>Partner: {fpo}<br/>Crop: {crop}<br/>Area: {acres} Acres<br/>Moisture: {moisture}% ({status})",
             "style": {
