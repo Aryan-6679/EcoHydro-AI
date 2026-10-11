@@ -276,34 +276,6 @@ def load_farm_data():
         labels=["Critical", "Deficit", "Optimal"]
     ).astype(str)
 
-    # PRE-RENDER FULL TOOLTIP IN PYTHON
-    # This totally bypasses PyDeck's flexible string interpolation bugs in fullscreen mode!
-    df['tooltip_html'] = df.apply(
-        lambda row: f"""
-        <div style="font-family: 'Inter', sans-serif; line-height: 1.6; min-width: 200px;">
-            <div style="border-bottom: 1px solid #3f3f46; padding-bottom: 6px; margin-bottom: 6px;">
-                <b style="color: #10b981; font-size: 15px;">{row['name']}</b>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-                <span style="color: #a1a1aa; font-size: 12px;">Partner:</span>
-                <span style="color: #fafafa; font-weight: 600; font-size: 12px;">{row['fpo']}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-                <span style="color: #a1a1aa; font-size: 12px;">Crop:</span>
-                <span style="color: #fafafa; font-weight: 600; font-size: 12px;">{row['crop']}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-                <span style="color: #a1a1aa; font-size: 12px;">Area:</span>
-                <span style="color: #fafafa; font-weight: 600; font-size: 12px;">{row['acres']} Acres</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-                <span style="color: #a1a1aa; font-size: 12px;">Moisture:</span>
-                <span style="color: #fafafa; font-weight: 600; font-size: 12px;">{row['moisture']}% ({row['status']})</span>
-            </div>
-        </div>
-        """, axis=1
-    )
-
     return df
 
 vellore_farms = load_farm_data()
@@ -386,19 +358,21 @@ if page == "GIS Farm Telemetry":
         )
         
         # FULLSCREEN BULLETPROOF TOOLTIP:
-        # 1. We reference the pre-rendered '{tooltip_html}' string to bypass PyDeck parser drops.
-        # 2. We use max zIndex to force it above fullscreen layers.
+        # We put the HTML in the template (allowed) instead of the dataframe (escaped).
+        # whiteSpace: nowrap ensures the fullscreen CSS does not squish and crop the text!
         deck_tooltip = {
-            "html": "{tooltip_html}",
+            "html": "<b style='color: #10b981; font-size: 15px;'>{name}</b><br/><hr style='margin: 8px 0; border-color: #3f3f46;'/><span style='color: #a1a1aa;'>Partner:</span> <b>{fpo}</b><br/><span style='color: #a1a1aa;'>Crop:</span> <b>{crop}</b><br/><span style='color: #a1a1aa;'>Area:</span> <b>{acres} Acres</b><br/><span style='color: #a1a1aa;'>Moisture:</span> <b>{moisture}% ({status})</b>",
             "style": {
                 "backgroundColor": "#18181b",
                 "color": "#fafafa",
                 "border": "1px solid #3f3f46",
                 "borderRadius": "8px",
-                "padding": "12px",
+                "padding": "16px",
                 "boxShadow": "0 10px 15px -3px rgba(0, 0, 0, 0.6)",
                 "zIndex": "2147483647",
-                "whiteSpace": "normal"
+                "whiteSpace": "nowrap",
+                "lineHeight": "1.6",
+                "fontFamily": "'Inter', sans-serif"
             }
         }
         
