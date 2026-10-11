@@ -151,24 +151,21 @@ if page == "GIS Farm Telemetry":
     
     st.markdown("### Interactive Farm Map View")
     if not vellore_farms.empty:
-        def get_color(status):
-            if status == "Optimal":
-                return [16, 185, 129, 220]
-            elif status == "Deficit":
-                return [245, 158, 11, 220]
-            else:
-                return [239, 68, 68, 220]
-
-        vellore_farms['color'] = vellore_farms['status'].apply(get_color)
-        vellore_farms['radius'] = vellore_farms['acres'] * 90
+        color_map = {
+            "Optimal": [16, 185, 129, 200],
+            "Deficit": [245, 158, 11, 200],
+            "Critical": [239, 68, 68, 200]
+        }
+        vellore_farms['color'] = vellore_farms['status'].map(color_map)
+        vellore_farms['radius'] = vellore_farms['acres'] * 80
         
         layer = pdk.Layer(
             "ScatterplotLayer",
             data=vellore_farms,
             get_position="[lon, lat]",
             get_fill_color="color",
-            get_line_color=[255, 255, 255, 200],
-            line_width_min_pixels=2,
+            get_line_color=[255, 255, 255, 150],
+            line_width_min_pixels=1,
             get_radius="radius",
             pickable=True,
             auto_highlight=True
@@ -177,12 +174,12 @@ if page == "GIS Farm Telemetry":
         view_state = pdk.ViewState(
             latitude=12.92,
             longitude=79.10,
-            zoom=10,
-            pitch=25
+            zoom=10.5,
+            pitch=30
         )
         
         deck = pdk.Deck(
-            map_style="mapbox://styles/mapbox/dark-v10",
+            map_style="dark",
             layers=[layer],
             initial_view_state=view_state,
             tooltip={
@@ -364,5 +361,3 @@ elif page == "TAM/SAM & Business Model":
             </div>
         </div>
         """, unsafe_allow_html=True)
-```:app.py
-```
