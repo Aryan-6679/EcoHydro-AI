@@ -321,19 +321,6 @@ with st.sidebar:
         "Methane & Carbon Ledger",
         "TAM/SAM & Business Model",
     ], label_visibility="collapsed")
-    
-    st.write("")
-    st.write("")
-    st.markdown("""
-        <div style="background-color: #111113; border: 1px solid #27272a; padding: 16px; border-radius: 8px;">
-            <div style="font-size: 0.7rem; color: #a1a1aa; text-transform: uppercase; font-weight: 600;">System Status</div>
-            <div style="color: #10b981; font-weight: 500; font-size: 0.9rem; margin-top: 4px; display: flex; align-items: center; gap: 6px;">
-                <div style="width: 8px; height: 8px; background-color: #10b981; border-radius: 50%;"></div>
-                All Sensors Online
-            </div>
-            <div style="font-size: 0.7rem; color: #71717a; margin-top: 6px;">Last Sync: Just Now</div>
-        </div>
-    """, unsafe_allow_html=True)
 
 if page == "GIS Farm Telemetry":
     st.markdown("<div class='main-header'>GIS Farm Telemetry</div>", unsafe_allow_html=True)
