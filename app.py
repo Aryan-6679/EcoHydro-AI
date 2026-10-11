@@ -252,17 +252,14 @@ if page == "GIS Farm Telemetry":
             bearing=-15
         )
         
-        # PREMIUM HOVER TOOLTIP HTML
+        # Using basic HTML tags because Streamlit's PyDeck integration aggressively 
+        # sanitizes (DOMPurify) complex tags like <table>, causing data deletion.
         tooltip_html = (
-            "<div style='min-width: 240px;'>"
-            "<b style='font-size: 16px; color: #10b981; margin-bottom: 8px; display: block;'>{name}</b>"
-            "<table style='width: 100%; border-collapse: collapse; font-family: sans-serif; font-size: 13px; color: #f8fafc;'>"
-            "<tr><td style='padding: 4px 0; border-bottom: 1px solid #1e293b;'><b>FPO Partner</b></td><td style='text-align: right; padding: 4px 0; border-bottom: 1px solid #1e293b;'>{fpo}</td></tr>"
-            "<tr><td style='padding: 4px 0; border-bottom: 1px solid #1e293b;'><b>Harvest Crop</b></td><td style='text-align: right; padding: 4px 0; border-bottom: 1px solid #1e293b;'>{crop}</td></tr>"
-            "<tr><td style='padding: 4px 0; border-bottom: 1px solid #1e293b;'><b>Field Area</b></td><td style='text-align: right; padding: 4px 0; border-bottom: 1px solid #1e293b;'>{acres} Acres</td></tr>"
-            "<tr><td style='padding: 4px 0; color: #fbbf24;'><b>Soil Moisture</b></td><td style='text-align: right; padding: 4px 0; color: #fbbf24;'><b>{moisture}% ({status})</b></td></tr>"
-            "</table>"
-            "</div>"
+            "<b style='color: #10b981; font-size: 16px;'>Farm: {name}</b><br/>"
+            "<b>FPO Partner:</b> {fpo}<br/>"
+            "<b>Harvest Crop:</b> {crop}<br/>"
+            "<b>Field Area:</b> {acres} Acres<br/>"
+            "<b style='color: #fbbf24;'>Soil Moisture:</b> {moisture}% ({status})"
         )
         
         deck = pdk.Deck(
@@ -274,12 +271,15 @@ if page == "GIS Farm Telemetry":
                 "html": tooltip_html,
                 "style": {
                     "backgroundColor": "#0f172a",
+                    "color": "#f8fafc",
                     "border": "1px solid #10b981",
-                    "borderRadius": "10px",
+                    "borderRadius": "8px",
                     "padding": "16px",
                     "boxShadow": "0 10px 30px rgba(0,0,0,0.6)",
                     "whiteSpace": "nowrap",
-                    "zIndex": "9999"
+                    "lineHeight": "1.6",
+                    "fontFamily": "sans-serif",
+                    "zIndex": "99999"
                 }
             }
         )
