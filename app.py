@@ -8,7 +8,7 @@ from sklearn.ensemble import RandomForestRegressor
 
 # --- PAGE CONFIGURATION & PREMIUM UI ---
 st.set_page_config(
-    page_title="EcoHydro AI - Precision Ag",
+    page_title="EcoHydro AI - Precision Agriculture Platform",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -237,7 +237,7 @@ if page == "GIS Farm Telemetry":
     col_m1.metric("Monitored Canopy", "4,280 Acres", "+12% MoM")
     col_m2.metric("Freshwater Saved", "18.4M Liters", "38.5% vs Flood")
     col_m3.metric("Verified Offsets", "1,420 tCO2e", "AWD Protocol")
-    col_m4.metric("Farmer Liquidity", "₹ 28.4 Lakhs", "85% Yield")
+    col_m4.metric("Farmer Liquidity", "INR 28.4 Lakhs", "85% Yield")
     
     st.markdown("<br><h3>3D Interactive Farm Telemetry</h3>", unsafe_allow_html=True)
     
@@ -300,23 +300,24 @@ if page == "GIS Farm Telemetry":
             layers=[scatter_layer, column_layer],
             initial_view_state=view_state,
             tooltip={
-                "html": "<b>{name}</b><br/><b>FPO Entity:</b> {fpo}<br/><b>Crop Type:</b> {crop}<br/><b>Area:</b> {acres} Acres<br/><b>Soil Moisture:</b> {moisture}% ({status})",
+                "html": "<b>{name}</b><br/>Area: {acres} Acres<br/>Moisture: {moisture}% ({status})",
                 "style": {
-                    "backgroundColor": "rgba(15, 23, 42, 0.95)",
+                    "backgroundColor": "#1e293b",
                     "color": "#f8fafc",
-                    "borderRadius": "12px",
-                    "padding": "12px",
+                    "borderRadius": "8px",
+                    "padding": "10px",
                     "border": "1px solid rgba(52, 211, 153, 0.3)",
                     "boxShadow": "0 10px 25px rgba(0,0,0,0.5)",
                     "fontFamily": "sans-serif",
-                    "fontSize": "13px",
-                    "lineHeight": "1.6"
+                    "fontSize": "14px",
+                    "whiteSpace": "nowrap", # Prevents text cropping on hover
+                    "lineHeight": "1.5"
                 }
             }
         )
         
         # Render PyDeck
-        st.pydeck_chart(deck, width="stretch")
+        st.pydeck_chart(deck)
         
         # Selected Field Breakout
         st.write("")
@@ -342,7 +343,7 @@ if page == "GIS Farm Telemetry":
                 </div>
                 <div class="custom-panel" style="border-left-color: #8b5cf6;">
                     <div style="color: #94a3b8; font-size: 0.8rem; text-transform: uppercase;">Live Microclimate</div>
-                    <div style="font-size: 1.1rem; font-weight: 600; color: #f8fafc;">{temp}°C, {hum}% RH</div>
+                    <div style="font-size: 1.1rem; font-weight: 600; color: #f8fafc;">{temp} C, {hum}% RH</div>
                     <div style="margin-top: 10px; color: #94a3b8; font-size: 0.8rem; text-transform: uppercase;">Carbon Compliance</div>
                     <div style="font-size: 1.1rem; font-weight: 600; color: #10b981;">Verified AWD</div>
                 </div>
@@ -367,7 +368,7 @@ elif page == "AI Irrigation Scheduler":
     
     col_btn, col_spacer = st.columns([1, 3])
     with col_btn:
-        st.button("Auto-Sync Live Weather", on_click=fetch_api_data, use_container_width=True)
+        st.button("Auto-Sync Live Weather", on_click=fetch_api_data, width="stretch")
     
     st.write("")
     
@@ -382,7 +383,7 @@ elif page == "AI Irrigation Scheduler":
             
         with st.expander("Environmental Telemetry", expanded=True):
             c_temp, c_hum, c_rain = st.columns(3)
-            temp_in = c_temp.slider("Temp (°C)", 20, 45, key='api_temp')
+            temp_in = c_temp.slider("Temp (C)", 20, 45, key='api_temp')
             humidity_in = c_hum.slider("Humidity (%)", 20, 95, key='api_hum')
             rain_in = c_rain.slider("Rain (mm)", 0, 50, key='api_rain')
         
@@ -418,7 +419,7 @@ elif page == "AI Irrigation Scheduler":
         st.markdown(f"""
             <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 15px; border-radius: 12px; margin-top: 20px;">
                 <h4 style="margin: 0; color: #10b981; font-size: 1.1rem;">Operational Savings</h4>
-                <div style="color: #f8fafc; font-size: 1.5rem; font-weight: 700; margin-top: 5px;">₹ {int(water_saved * 30 * 0.012):,} / Month</div>
+                <div style="color: #f8fafc; font-size: 1.5rem; font-weight: 700; margin-top: 5px;">INR {int(water_saved * 30 * 0.012):,} / Month</div>
                 <div style="color: #94a3b8; font-size: 0.8rem;">(Estimated pumping & energy costs reduced)</div>
             </div>
         """, unsafe_allow_html=True)
@@ -439,10 +440,10 @@ elif page == "AI Irrigation Scheduler":
             paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
             font=dict(color="#94a3b8")
         )
-        st.plotly_chart(fig_chart, width="stretch", use_container_width=True)
+        st.plotly_chart(fig_chart)
             
     with c_explain:
-        st.markdown("#### Explainable AI (XAI) Matrix")
+        st.markdown("#### Explainable AI Matrix")
         fig_importance = px.bar(
             feature_importance, x='Importance', y='Feature', orientation='h', 
             color='Importance', color_continuous_scale="Tealgrn"
@@ -452,7 +453,7 @@ elif page == "AI Irrigation Scheduler":
             showlegend=False, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
             font=dict(color="#94a3b8"), yaxis_title=None, xaxis_title="Decision Weight"
         )
-        st.plotly_chart(fig_importance, width="stretch", use_container_width=True)
+        st.plotly_chart(fig_importance)
 
 # --- PAGE 3: CARBON LEDGER ---
 elif page == "Methane & Carbon Ledger":
@@ -462,8 +463,8 @@ elif page == "Methane & Carbon Ledger":
     st.write("")
     c1, c2, c3 = st.columns(3)
     c1.metric("Total Vaulted Credits", "1,314 tCO2e", "+200 this week")
-    c2.metric("Current Market Price", "₹ 1,530", "+ ₹ 45 vs last month")
-    c3.metric("FPO Payout Distributed", "₹ 20,10,420", "Fully Settled")
+    c2.metric("Current Market Price", "INR 1,530", "+ INR 45 vs last month")
+    c3.metric("FPO Payout Distributed", "INR 20,10,420", "Fully Settled")
     
     st.markdown("<br><h3>Verified FPO Carbon Credit Batches</h3>", unsafe_allow_html=True)
     ledger_data = pd.DataFrame([
@@ -478,17 +479,17 @@ elif page == "Methane & Carbon Ledger":
         column_config={
             "Batch ID": st.column_config.TextColumn("Ledger Hash", width="small"),
             "Credits (tCO2e)": st.column_config.NumberColumn("Verified tCO2e"),
-            "Value (INR)": st.column_config.NumberColumn("Payout Value", format="₹ %d"),
+            "Value (INR)": st.column_config.NumberColumn("Payout Value", format="INR %d"),
             "Compliance": st.column_config.ProgressColumn("SAR AWD Compliance", format="%d%%", min_value=0, max_value=100),
             "Status": st.column_config.TextColumn("Smart Contract Status")
         },
         hide_index=True,
-        use_container_width=True
+        width="stretch"
     )
     
     col_dl, col_space = st.columns([1, 4])
     with col_dl:
-        st.download_button("Download SEBI BRSR Audit (CSV)", data=ledger_data.to_csv(index=False).encode('utf-8'), file_name='EcoHydro_Carbon_Ledger.csv', mime='text/csv', use_container_width=True)
+        st.download_button("Download SEBI BRSR Audit (CSV)", data=ledger_data.to_csv(index=False).encode('utf-8'), file_name='EcoHydro_Carbon_Ledger.csv', mime='text/csv', width="stretch")
 
 # --- PAGE 4: BUSINESS MODEL ---
 elif page == "TAM/SAM & Business Model":
@@ -518,16 +519,16 @@ elif page == "TAM/SAM & Business Model":
         st.markdown(f"""
         <div style="background: linear-gradient(145deg, rgba(16, 185, 129, 0.15), rgba(15, 23, 42, 0.8)); border: 1px solid rgba(16, 185, 129, 0.4); padding: 35px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
             <h4 style="margin-top: 0; color: #94a3b8; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.05em;">Projected Annual Recurring Revenue (ARR)</h4>
-            <h1 style="color: #34d399; font-size: 3.5rem; margin: 15px 0; text-shadow: 0 2px 10px rgba(52, 211, 153, 0.2);">₹ {(total_arr)/100000:.2f} Lakhs</h1>
+            <h1 style="color: #34d399; font-size: 3.5rem; margin: 15px 0; text-shadow: 0 2px 10px rgba(52, 211, 153, 0.2);">INR {(total_arr)/100000:.2f} Lakhs</h1>
             <div style="height: 1px; background: rgba(255,255,255,0.1); margin: 25px 0;"></div>
             <div style="display: flex; justify-content: space-between; font-size: 1.1rem;">
                 <div style="display: flex; flex-direction: column;">
                     <span style="color: #94a3b8; font-size: 0.8rem; text-transform: uppercase;">SaaS Subscriptions</span>
-                    <span style="color: #f8fafc; font-weight: 600; font-size: 1.4rem;">₹ {saas_rev/100000:.2f}L</span>
+                    <span style="color: #f8fafc; font-weight: 600; font-size: 1.4rem;">INR {saas_rev/100000:.2f}L</span>
                 </div>
                 <div style="display: flex; flex-direction: column; text-align: right;">
                     <span style="color: #94a3b8; font-size: 0.8rem; text-transform: uppercase;">Carbon Commission (15%)</span>
-                    <span style="color: #f8fafc; font-weight: 600; font-size: 1.4rem;">₹ {carbon_rev/100000:.2f}L</span>
+                    <span style="color: #f8fafc; font-weight: 600; font-size: 1.4rem;">INR {carbon_rev/100000:.2f}L</span>
                 </div>
             </div>
         </div>
