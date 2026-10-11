@@ -9,7 +9,6 @@ from sklearn.ensemble import RandomForestRegressor
 # --- PAGE CONFIGURATION & PREMIUM UI ---
 st.set_page_config(
     page_title="EcoHydro AI - Precision Ag",
-    page_icon="🌱",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -205,7 +204,6 @@ vellore_farms = load_farm_data()
 with st.sidebar:
     st.markdown("""
         <div style='display: flex; align-items: center; gap: 10px; margin-bottom: 20px;'>
-            <div style='font-size: 2.5rem;'>🌱</div>
             <div>
                 <h2 style='margin: 0; padding: 0; background: linear-gradient(135deg, #34d399 0%, #0ea5e9 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;'>EcoHydro AI</h2>
                 <caption style='color: #64748b; font-size: 0.8rem;'>Precision Ag v2.5 PRO</caption>
@@ -215,22 +213,22 @@ with st.sidebar:
     
     st.divider()
     page = st.radio("SELECT MODULE", [
-        "🌍 GIS Farm Telemetry",
-        "💧 AI Irrigation Scheduler",
-        "🍃 Methane & Carbon Ledger",
-        "📈 TAM/SAM & Business Model",
+        "GIS Farm Telemetry",
+        "AI Irrigation Scheduler",
+        "Methane & Carbon Ledger",
+        "TAM/SAM & Business Model",
     ], label_visibility="collapsed")
     st.divider()
     
     st.markdown("""
         <div style='text-align: center; color: #475569; font-size: 0.75rem;'>
-            System Status: 🟢 All Sensors Online<br>
+            System Status: All Sensors Online<br>
             Last Sync: Just Now
         </div>
     """, unsafe_allow_html=True)
 
 # --- PAGE 1: GIS TELEMETRY ---
-if page == "🌍 GIS Farm Telemetry":
+if page == "GIS Farm Telemetry":
     st.markdown("<h1 class='gradient-text'>Vellore Region Precision GIS Telemetry</h1>", unsafe_allow_html=True)
     st.write("Live multispectral soil moisture and crop status across onboarded Farmer Producer Organizations (FPOs).")
     
@@ -302,22 +300,17 @@ if page == "🌍 GIS Farm Telemetry":
             layers=[scatter_layer, column_layer],
             initial_view_state=view_state,
             tooltip={
-                "html": """
-                    <div style='font-family: "Plus Jakarta Sans", sans-serif; padding: 5px;'>
-                        <h3 style='margin: 0 0 10px 0; color: #34d399;'>{name}</h3>
-                        <b>FPO Entity:</b> {fpo}<br/>
-                        <b>Crop Type:</b> {crop}<br/>
-                        <b>Area:</b> {acres} Acres<br/>
-                        <b>Soil Moisture:</b> {moisture}% <span style='opacity: 0.8;'>({status})</span>
-                    </div>
-                """,
+                "html": "<b>{name}</b><br/><b>FPO Entity:</b> {fpo}<br/><b>Crop Type:</b> {crop}<br/><b>Area:</b> {acres} Acres<br/><b>Soil Moisture:</b> {moisture}% ({status})",
                 "style": {
                     "backgroundColor": "rgba(15, 23, 42, 0.95)",
                     "color": "#f8fafc",
                     "borderRadius": "12px",
-                    "padding": "15px",
+                    "padding": "12px",
                     "border": "1px solid rgba(52, 211, 153, 0.3)",
-                    "boxShadow": "0 10px 25px rgba(0,0,0,0.5)"
+                    "boxShadow": "0 10px 25px rgba(0,0,0,0.5)",
+                    "fontFamily": "sans-serif",
+                    "fontSize": "13px",
+                    "lineHeight": "1.6"
                 }
             }
         )
@@ -327,7 +320,7 @@ if page == "🌍 GIS Farm Telemetry":
         
         # Selected Field Breakout
         st.write("")
-        st.markdown("### 🔍 Granular Field Analysis")
+        st.markdown("### Granular Field Analysis")
         selected_farm_name = st.selectbox("Select Farm for Deep Dive", vellore_farms["name"], label_visibility="collapsed")
         
         farm = vellore_farms[vellore_farms["name"] == selected_farm_name].iloc[0]
@@ -351,13 +344,13 @@ if page == "🌍 GIS Farm Telemetry":
                     <div style="color: #94a3b8; font-size: 0.8rem; text-transform: uppercase;">Live Microclimate</div>
                     <div style="font-size: 1.1rem; font-weight: 600; color: #f8fafc;">{temp}°C, {hum}% RH</div>
                     <div style="margin-top: 10px; color: #94a3b8; font-size: 0.8rem; text-transform: uppercase;">Carbon Compliance</div>
-                    <div style="font-size: 1.1rem; font-weight: 600; color: #10b981;">✅ Verified AWD</div>
+                    <div style="font-size: 1.1rem; font-weight: 600; color: #10b981;">Verified AWD</div>
                 </div>
             </div>
         """, unsafe_allow_html=True)
 
 # --- PAGE 2: AI IRRIGATION SCHEDULER ---
-elif page == "💧 AI Irrigation Scheduler":
+elif page == "AI Irrigation Scheduler":
     st.markdown("<h1 class='gradient-text'>XGBoost/RF Precision Irrigation Engine</h1>", unsafe_allow_html=True)
     st.write("Dynamically calculates real-time water requirements to eliminate flood irrigation waste.")
     
@@ -370,24 +363,24 @@ elif page == "💧 AI Irrigation Scheduler":
         st.session_state.api_temp = int(t)
         st.session_state.api_hum = int(h)
         st.session_state.api_rain = int(r)
-        st.toast("✅ Live Weather Synced for Vellore API", icon="📡")
+        st.toast("Live Weather Synced for Vellore API")
     
     col_btn, col_spacer = st.columns([1, 3])
     with col_btn:
-        st.button("📡 Auto-Sync Live Weather", on_click=fetch_api_data, use_container_width=True)
+        st.button("Auto-Sync Live Weather", on_click=fetch_api_data, use_container_width=True)
     
     st.write("")
     
     col_inputs, col_results = st.columns([1.2, 1])
     with col_inputs:
-        with st.expander("🌾 Farm & Soil Composition", expanded=True):
+        with st.expander("Farm & Soil Composition", expanded=True):
             crop_type = st.selectbox("Target Crop Profile", ["Paddy Rice", "Sugarcane", "Groundnut", "Maize"])
             c_acres, c_soil, c_nitro = st.columns(3)
             acres = c_acres.number_input("Area (Acres)", value=10.0, step=1.0)
             soil_m = c_soil.slider("Soil Moisture %", 10, 80, 25)
             nitrogen = c_nitro.slider("Nitrogen (mg/kg)", 10, 140, 65)
             
-        with st.expander("🌤️ Environmental Telemetry", expanded=True):
+        with st.expander("Environmental Telemetry", expanded=True):
             c_temp, c_hum, c_rain = st.columns(3)
             temp_in = c_temp.slider("Temp (°C)", 20, 45, key='api_temp')
             humidity_in = c_hum.slider("Humidity (%)", 20, 95, key='api_hum')
@@ -401,7 +394,7 @@ elif page == "💧 AI Irrigation Scheduler":
             pred_water = 0
             st.markdown("""
                 <div style="background: rgba(59, 130, 246, 0.1); border-left: 4px solid #3b82f6; padding: 15px; border-radius: 0 8px 8px 0; margin-bottom: 20px;">
-                    <b style="color: #60a5fa;">🌧️ Rain Override Triggered:</b> Natural precipitation is sufficient. Irrigation postponed.
+                    <b style="color: #60a5fa;">Rain Override Triggered:</b> Natural precipitation is sufficient. Irrigation postponed.
                 </div>
             """, unsafe_allow_html=True)
         else:
@@ -424,7 +417,7 @@ elif page == "💧 AI Irrigation Scheduler":
         
         st.markdown(f"""
             <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 15px; border-radius: 12px; margin-top: 20px;">
-                <h4 style="margin: 0; color: #10b981; font-size: 1.1rem;">💰 Operational Savings</h4>
+                <h4 style="margin: 0; color: #10b981; font-size: 1.1rem;">Operational Savings</h4>
                 <div style="color: #f8fafc; font-size: 1.5rem; font-weight: 700; margin-top: 5px;">₹ {int(water_saved * 30 * 0.012):,} / Month</div>
                 <div style="color: #94a3b8; font-size: 0.8rem;">(Estimated pumping & energy costs reduced)</div>
             </div>
@@ -433,7 +426,7 @@ elif page == "💧 AI Irrigation Scheduler":
     st.divider()
     c_chart, c_explain = st.columns(2)
     with c_chart:
-        st.markdown("#### 📅 7-Day Water Projection")
+        st.markdown("#### 7-Day Water Projection")
         days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
         fig_chart = px.bar(
             pd.DataFrame({'Day': days, 'Flood': [int(flood_water)]*7, 'AI Drip': [int(pred_water * f) for f in [1.0, 0.92, 1.05, 0.88, 0.95, 1.02, 0.90]]}), 
@@ -449,7 +442,7 @@ elif page == "💧 AI Irrigation Scheduler":
         st.plotly_chart(fig_chart, width="stretch", use_container_width=True)
             
     with c_explain:
-        st.markdown("#### 🧠 Explainable AI (XAI) Matrix")
+        st.markdown("#### Explainable AI (XAI) Matrix")
         fig_importance = px.bar(
             feature_importance, x='Importance', y='Feature', orientation='h', 
             color='Importance', color_continuous_scale="Tealgrn"
@@ -462,7 +455,7 @@ elif page == "💧 AI Irrigation Scheduler":
         st.plotly_chart(fig_importance, width="stretch", use_container_width=True)
 
 # --- PAGE 3: CARBON LEDGER ---
-elif page == "🍃 Methane & Carbon Ledger":
+elif page == "Methane & Carbon Ledger":
     st.markdown("<h1 class='gradient-text'>AWD Methane Reduction Protocol</h1>", unsafe_allow_html=True)
     st.write("Verifies emission reductions via satellite radar (SAR) to mint high-quality ESG carbon credits.")
     
@@ -472,7 +465,7 @@ elif page == "🍃 Methane & Carbon Ledger":
     c2.metric("Current Market Price", "₹ 1,530", "+ ₹ 45 vs last month")
     c3.metric("FPO Payout Distributed", "₹ 20,10,420", "Fully Settled")
     
-    st.markdown("<br><h3>🔗 Verified FPO Carbon Credit Batches</h3>", unsafe_allow_html=True)
+    st.markdown("<br><h3>Verified FPO Carbon Credit Batches</h3>", unsafe_allow_html=True)
     ledger_data = pd.DataFrame([
         {"Batch ID": "#AWD-26-089", "FPO Name": "North Arcot Farmers", "Acres": 450, "Credits (tCO2e)": 810, "Value (INR)": 1245000, "Compliance": 98, "Status": "Paid"},
         {"Batch ID": "#AWD-26-090", "FPO Name": "Palar River Basin", "Acres": 280, "Credits (tCO2e)": 504, "Value (INR)": 774000, "Compliance": 100, "Status": "Paid"},
@@ -495,10 +488,10 @@ elif page == "🍃 Methane & Carbon Ledger":
     
     col_dl, col_space = st.columns([1, 4])
     with col_dl:
-        st.download_button("📥 Download SEBI BRSR Audit (CSV)", data=ledger_data.to_csv(index=False).encode('utf-8'), file_name='EcoHydro_Carbon_Ledger.csv', mime='text/csv', use_container_width=True)
+        st.download_button("Download SEBI BRSR Audit (CSV)", data=ledger_data.to_csv(index=False).encode('utf-8'), file_name='EcoHydro_Carbon_Ledger.csv', mime='text/csv', use_container_width=True)
 
 # --- PAGE 4: BUSINESS MODEL ---
-elif page == "📈 TAM/SAM & Business Model":
+elif page == "TAM/SAM & Business Model":
     st.markdown("<h1 class='gradient-text'>Financial Projections & Market Scope</h1>", unsafe_allow_html=True)
     st.write("EcoHydro AI leverages a robust dual-revenue stream: B2B SaaS for FPOs and a 15% marketplace commission on minted carbon credits.")
     
@@ -509,7 +502,7 @@ elif page == "📈 TAM/SAM & Business Model":
     col_tam3.metric("SOM (Year 3 Target)", "$42 Million", "Serviceable Obtainable")
     
     st.write("<br><hr style='border-color: rgba(255,255,255,0.1);'>", unsafe_allow_html=True)
-    st.markdown("### 🧮 Interactive Monetization Sandbox")
+    st.markdown("### Interactive Monetization Sandbox")
     
     calc_c1, calc_c2 = st.columns([1, 1.5])
     with calc_c1:
