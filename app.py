@@ -316,7 +316,6 @@ if page == "GIS Farm Telemetry":
     st.write("")
     
     if not vellore_farms.empty:
-        # Use lambda mapping to prevent Pandas crashing on assigning lists to NaN values
         color_map = {
             "Optimal": [16, 185, 129, 230],     # Emerald
             "Deficit": [245, 158, 11, 230],     # Amber
@@ -330,8 +329,8 @@ if page == "GIS Farm Telemetry":
             data=vellore_farms,
             get_position="[lon, lat]",
             get_fill_color="color",
-            get_radius="acres * 150", # Increased radius to make hovering effortless
-            pickable=True,            # ENABLE picking here so the tooltip anchors to the 2D ground
+            get_radius="acres * 150", 
+            pickable=False,            # Disabled picking to remove tooltip
             opacity=0.4
         )
         
@@ -341,10 +340,10 @@ if page == "GIS Farm Telemetry":
             data=vellore_farms,
             get_position="[lon, lat]",
             get_elevation="acres",
-            elevation_scale=60,       # Lowered scale to keep visuals clean and proportionate
+            elevation_scale=60,       
             radius=150,
             get_fill_color="color",
-            pickable=False,           # DISABLE picking here to fix the 3D vertical offset bug
+            pickable=False,           
             auto_highlight=True,
             extruded=True
         )
@@ -357,77 +356,63 @@ if page == "GIS Farm Telemetry":
             bearing=-15
         )
         
-        # FOOLPROOF NATIVE TOOLTIP:
-        deck_tooltip = {
-            "html": "<b style='color: #10b981;'>{name}</b><br/>Partner: {fpo}<br/>Crop: {crop}<br/>Area: {acres} Acres<br/>Moisture: {moisture}% ({status})",
-            "style": {
-                "backgroundColor": "#18181b",
-                "color": "#fafafa",
-                "zIndex": "2147483647"
-            }
-        }
-        
+        # Disabled the native deck_tooltip
         deck = pdk.Deck(
             map_provider="carto",
             map_style="dark", 
             layers=[scatter_layer, column_layer],
             initial_view_state=view_state,
-            tooltip=deck_tooltip
+            tooltip=False
         )
         
-        st.pydeck_chart(deck, width="stretch")
+        # Create a 2-column layout: Map on the left (wider), Drop Box & Details on the right
+        col_map, col_details = st.columns([2.5, 1], gap="large")
         
-        st.write("")
-        st.markdown("### Granular HUD Analysis")
-        
-        farm_names = vellore_farms["name"].unique()
-        if len(farm_names) > 0:
-            selected_farm_name = st.selectbox("Select Target Farm", farm_names, label_visibility="collapsed")
-            farm_subset = vellore_farms[vellore_farms["name"] == selected_farm_name]
+        with col_map:
+            st.pydeck_chart(deck, width="stretch")
             
-            if not farm_subset.empty:
-                farm = farm_subset.iloc[0]
-                temp, hum, precip = get_live_weather(farm['lat'], farm['lon'])
+        with col_details:
+            st.markdown("<h4 style='margin-top: 0;'>Target Diagnostics</h4>", unsafe_allow_html=True)
+            farm_names = vellore_farms["name"].unique()
+            
+            if len(farm_names) > 0:
+                selected_farm_name = st.selectbox("Select Target Farm", farm_names, label_visibility="collapsed")
+                farm_subset = vellore_farms[vellore_farms["name"] == selected_farm_name]
                 
-                c1, c2, c3 = st.columns(3)
-                
-                with c1:
+                if not farm_subset.empty:
+                    farm = farm_subset.iloc[0]
+                    temp, hum, precip = get_live_weather(farm['lat'], farm['lon'])
+                    status_class = "status-optimal" if farm['moisture'] >= 45 else ("status-deficit" if farm['moisture'] > 25 else "status-critical")
+                    
                     st.markdown(f"""
-                    <div class="hud-card status-info">
+                    <div class="hud-card status-info" style="margin-bottom: 16px;">
                         <div>
                             <div class="hud-label">FPO Partner</div>
                             <div class="hud-value">{farm['fpo']}</div>
                         </div>
-                        <div>
+                        <div style="margin-top: 12px;">
                             <div class="hud-label">Target Crop</div>
                             <div class="hud-value">{farm['crop']}</div>
                         </div>
                     </div>
-                    """, unsafe_allow_html=True)
                     
-                with c2:
-                    status_class = "status-optimal" if farm['moisture'] >= 45 else ("status-deficit" if farm['moisture'] > 25 else "status-critical")
-                    st.markdown(f"""
-                    <div class="hud-card {status_class}">
+                    <div class="hud-card {status_class}" style="margin-bottom: 16px;">
                         <div>
                             <div class="hud-label">Soil Moisture</div>
                             <div class="hud-value">{farm['moisture']}% ({farm['status']})</div>
                         </div>
-                        <div>
+                        <div style="margin-top: 12px;">
                             <div class="hud-label">Acreage</div>
                             <div class="hud-value">{farm['acres']} Acres</div>
                         </div>
                     </div>
-                    """, unsafe_allow_html=True)
                     
-                with c3:
-                    st.markdown(f"""
                     <div class="hud-card status-optimal">
                         <div>
                             <div class="hud-label">Live Weather (API)</div>
                             <div class="hud-value">{temp} C, {hum}% Hum</div>
                         </div>
-                        <div>
+                        <div style="margin-top: 12px;">
                             <div class="hud-label">Protocol Status</div>
                             <div class="hud-value" style="color: #10b981;">Verified Compliant</div>
                         </div>
