@@ -1,6 +1,11 @@
-streamlit
-pandas
-numpy
-plotly==5.24.1
-scikit-learn
-requests
+streamlit1.27.0
+pandas2.1.1
+numpy1.26.0
+plotly5.17.0
+scikit-learn1.3.1
+requests2.31.0
+jupyter1.0.0
+seaborn0.13.0
+matplotlib3.8.0
+gspread5.11.2
+oauth2client==4.1.3
