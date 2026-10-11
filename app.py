@@ -358,9 +358,9 @@ if page == "GIS Farm Telemetry":
         )
         
         # FULLSCREEN BULLETPROOF TOOLTIP:
-        # We put the HTML in the template (allowed) instead of the dataframe (escaped).
+        # We put the sizing in the HTML div so PyDeck's internal engine can calculate edge-collisions and auto-flip!
         deck_tooltip = {
-            "html": "<div style='font-size: 13px; line-height: 1.5;'><b style='color: #10b981; font-size: 14px;'>{name}</b><hr style='margin: 6px 0; border-color: #3f3f46;'/><span style='color: #a1a1aa;'>Partner:</span> <b>{fpo}</b><br/><span style='color: #a1a1aa;'>Crop:</span> <b>{crop}</b><br/><span style='color: #a1a1aa;'>Area:</span> <b>{acres} Acres</b><br/><span style='color: #a1a1aa;'>Moisture:</span> <b>{moisture}% ({status})</b></div>",
+            "html": "<div style='width: 180px; white-space: normal; font-size: 13px; line-height: 1.5;'><b style='color: #10b981; font-size: 14px;'>{name}</b><hr style='margin: 6px 0; border-color: #3f3f46;'/><span style='color: #a1a1aa;'>Partner:</span> <b>{fpo}</b><br/><span style='color: #a1a1aa;'>Crop:</span> <b>{crop}</b><br/><span style='color: #a1a1aa;'>Area:</span> <b>{acres} Acres</b><br/><span style='color: #a1a1aa;'>Moisture:</span> <b>{moisture}% ({status})</b></div>",
             "style": {
                 "backgroundColor": "#18181b",
                 "color": "#fafafa",
@@ -369,13 +369,8 @@ if page == "GIS Farm Telemetry":
                 "padding": "12px",
                 "boxShadow": "0 8px 16px rgba(0, 0, 0, 0.6)",
                 "zIndex": "2147483647",
-                "minWidth": "180px",
-                "maxWidth": "260px",
-                "whiteSpace": "normal",
-                "pointerEvents": "none",
-                "marginTop": "-10px",
-                "marginLeft": "-10px",
-                "fontFamily": "'Inter', sans-serif"
+                "fontFamily": "'Inter', sans-serif",
+                "pointerEvents": "none"
             }
         }
         
