@@ -1,240 +1,309 @@
-import streamlit as st
-import pandas as pd
-import numpy as np
-import plotly.express as px
+# ... existing code ...
 import requests
-from sklearn.ensemble import RandomForestRegressor
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
 
-# ==========================================
-# 1. PAGE CONFIGURATION & SETUP
-# ==========================================
-st.set_page_config(page_title="EcoHydro AI | Skynet Hackathon", page_icon="🌱", layout="wide")
+# --- PAGE CONFIGURATION & PREMIUM UI ---
+st.set_page_config(
+    page_title="EcoHydro AI - Precision Agriculture Platform",
+    page_icon="💧",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
+# --- CUSTOM CSS STYLING ---
 st.markdown("""
     <style>
-    .metric-card {
-        background-color: #1e293b;
-        border-radius: 8px;
-        padding: 20px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        border-left: 4px solid #10b981;
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap');
+    
+    html, body, [class*="css"] {
+        font-family: 'Plus Jakarta Sans', sans-serif !important;
     }
-    .metric-value {
-        font-size: 2rem;
-        font-weight: 700;
-        color: #f8fafc;
+    
+    /* Glassmorphism Metric Cards */
+    [data-testid="metric-container"] {
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.9));
+        padding: 20px 24px;
+        border-radius: 16px;
+        border: 1px solid rgba(16, 185, 129, 0.2);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        transition: all 0.3s ease;
     }
-    .metric-label {
-        font-size: 0.9rem;
-        color: #94a3b8;
+    
+    [data-testid="metric-container"]:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(16, 185, 129, 0.15);
+        border-color: rgba(16, 185, 129, 0.5);
+    }
+
+    /* Metric Label & Value Styling */
+    [data-testid="stMetricLabel"] {
+        font-weight: 600;
+        color: #94a3b8 !important;
         text-transform: uppercase;
         letter-spacing: 0.05em;
+        font-size: 0.85rem;
+    }
+    [data-testid="stMetricValue"] {
+        font-weight: 800;
+        color: #f8fafc !important;
+        font-size: 2.2rem;
+    }
+    
+    /* Pitch Box */
+    .pitch-box { 
+        background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.02)); 
+        border: 1px solid rgba(245, 158, 11, 0.3); 
+        padding: 18px; 
+        border-radius: 12px; 
+        border-left: 5px solid rgba(245, 158, 11, 1);
+        color: #e2e8f0;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        margin-bottom: 20px;
+    }
+    
+    /* Gradients */
+    h1, h2, h3 { color: #f8fafc !important; }
+    .gradient-text {
+        background: -webkit-linear-gradient(45deg, #10b981, #06b6d4);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 800;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# ==========================================
-# 2. GOOGLE DRIVE / SHEETS INTEGRATION
-# ==========================================
-def log_to_google_drive(data_row):
-    """Pushes telemetry data directly to Google Drive (Sheets)"""
-    try:
-        # Define API scope
-        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-        
-        # Pull credentials safely from Streamlit Secrets
-        creds_dict = dict(st.secrets["gcp_service_account"])
-        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-        client = gspread.authorize(creds)
-        
-        # Open the specific Google Sheet
-        sheet = client.open("EcoHydro_Data_Logs").sheet1
-        
-        # Append the new row of data
-        sheet.append_row(data_row)
-        return True
-    except Exception as e:
-        # If it fails (e.g. no internet, bad keys), don't crash the app!
-        st.error(f"⚠️ Drive Sync Error (Check Secrets): {e}")
-        return False
+# --- MACHINE LEARNING MODEL SIMULATION ---
+# ... existing code ...
+def get_live_weather(lat, lon):
+# ... existing code ...
+    return 32.5, 65.0, 0.0 # Fallback
 
-# ==========================================
-# 3. DATA LOADING & ML MODEL
-# ==========================================
+# --- DATASET INTEGRATION (LEVEL 1) ---
 @st.cache_data
 def load_farm_data():
+    """Loads external CSV data"""
     try:
-        df = pd.read_csv("vellore_farm_data.csv")
-        return df
+        return pd.read_csv("vellore_farm_data.csv")
     except FileNotFoundError:
-        return pd.DataFrame({
-            "id": [1, 2, 3, 4, 5],
-            "name": ["Katpadi FPO", "Kaniyambadi FPO", "Anaicut FPO", "Gudiyatham FPO", "K.V. Kuppam FPO"],
-            "lat": [12.9800, 12.8333, 12.8754, 12.9463, 13.0485],
-            "lon": [79.1390, 79.1333, 78.9833, 78.8711, 79.0345],
-            "crop": ["Paddy", "Sugarcane", "Groundnut", "Paddy", "Banana"],
-            "acres": [120, 85, 40, 150, 60],
-            "moisture": [45, 30, 20, 50, 60],
-            "status": ["Optimal", "Deficit", "Critical", "Optimal", "Optimal"]
-        })
+        st.error("⚠️ vellore_farm_data.csv not found. Please ensure it is in the same folder.")
+        return pd.DataFrame()
 
-@st.cache_resource
-def train_ai_model():
-    np.random.seed(42)
-    n_samples = 500
-    X = pd.DataFrame({
-        'N': np.random.uniform(10, 120, n_samples),
-        'P': np.random.uniform(5, 80, n_samples),
-        'K': np.random.uniform(10, 80, n_samples),
-        'Temp': np.random.uniform(22, 42, n_samples),
-        'Humidity': np.random.uniform(30, 90, n_samples),
-        'Rainfall_Forecast': np.random.uniform(0, 50, n_samples),
-        'pH': np.random.uniform(5.5, 8.5, n_samples),
-        'Soil_Moisture': np.random.uniform(10, 80, n_samples)
-    })
-    y = np.clip((X['Temp']*200) + ((100-X['Humidity'])*50) - (X['Rainfall_Forecast']*25) - (X['Soil_Moisture']*80), 1000, 8000)
-    
-    model = RandomForestRegressor(n_estimators=50, random_state=42)
-    model.fit(X, y)
-    return model, X.columns
+vellore_farms = load_farm_data()
 
-farm_data = load_farm_data()
-ai_model, feature_names = train_ai_model()
-
-# ==========================================
-# 4. SIDEBAR NAVIGATION
-# ==========================================
+# --- SIDEBAR NAVIGATION ---
 with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/1892/1892747.png", width=60)
-    st.title("EcoHydro AI")
-    st.caption("Team Skynet | Precision Agriculture")
-    st.markdown("---")
+    st.image("https://img.icons8.com/color/96/eco-factory.png", width=70)
+    st.markdown("<h2 style='margin-top: -10px; margin-bottom: 0px;'>EcoHydro AI</h2>", unsafe_allow_html=True)
+    st.caption("Precision Agriculture Engine v2.0")
     
-    view = st.radio("Select Workspace Module", [
+    st.divider()
+    page = st.radio("Select Workspace Module", [
         "🌍 GIS Farm Telemetry",
         "⚡ AI Irrigation Scheduler",
         "🍃 Methane & Carbon Ledger",
-        "📈 TAM/SAM & Business Model"
+        "📈 TAM/SAM & Business Model",
     ])
-
-# ==========================================
-# 5. MAIN DASHBOARD VIEWS
-# ==========================================
-
-if view == "🌍 GIS Farm Telemetry":
-    st.header("🌍 Precision GIS Telemetry")
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.markdown('<div class="metric-card"><div class="metric-label">Total Monitored Land</div><div class="metric-value">4,280 Acres</div></div>', unsafe_allow_html=True)
-    with col2:
-        st.markdown('<div class="metric-card"><div class="metric-label">Freshwater Saved</div><div class="metric-value">18.4M Liters</div></div>', unsafe_allow_html=True)
-    with col3:
-        st.markdown('<div class="metric-card"><div class="metric-label">Verified CO2 Offsets</div><div class="metric-value">1,420 Tons</div></div>', unsafe_allow_html=True)
-    with col4:
-        st.markdown('<div class="metric-card"><div class="metric-label">Farmer Payout Pool</div><div class="metric-value">₹28.4 Lakh</div></div>', unsafe_allow_html=True)
+    st.divider()
     
-    fig_map = px.scatter_map(
-        farm_data, lat="lat", lon="lon", color="status", size="acres",
-        hover_name="name", hover_data=["crop", "acres", "moisture"],
-        color_discrete_map={"Optimal": "#10b981", "Deficit": "#f59e0b", "Critical": "#ef4444"},
-        zoom=10, center={"lat": 12.9165, "lon": 79.1325}, map_style="carto-positron"
-    )
-    fig_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, height=500)
-    st.plotly_chart(fig_map, use_container_width=True)
+    pitch_toggle = st.checkbox("🏆 Show Judge Pitch Highlights", value=True)
+    if pitch_toggle:
+        st.markdown("""
+        <div class="pitch-box">
+            <b>💡 Judge Elevator Pitch (30 Sec):</b><br><br>
+            EcoHydro AI eliminates 40% of agricultural freshwater waste using open satellite telemetry and AI, while unlocking up to ₹15,000/acre in corporate carbon credits for smallholder farmers—with <b>Zero Hardware Setup Costs</b>.
+        </div>
+        """, unsafe_allow_html=True)
 
-elif view == "⚡ AI Irrigation Scheduler":
-    st.header("⚡ AI Irrigation Scheduler & Live Weather Integration")
+# --- PAGE 1: GIS TELEMETRY ---
+if page == "🌍 GIS Farm Telemetry":
+    st.markdown("<h1 class='gradient-text'>🌍 Vellore Region Precision GIS Telemetry</h1>", unsafe_allow_html=True)
+    st.write("Live multispectral soil moisture and crop status across onboarded Farmer Producer Organizations (FPOs).")
     
-    if 'live_temp' not in st.session_state:
-        st.session_state['live_temp'] = 32.5
-        st.session_state['live_hum'] = 65
-        st.session_state['forecast_rain'] = 4.5
-
-    if st.button("🌦️ Sync Live Vellore Weather & 48hr Forecast (Open-Meteo API)"):
-        try:
-            res = requests.get("https://api.open-meteo.com/v1/forecast?latitude=12.9165&longitude=79.1325&current=temperature_2m,relative_humidity_2m&daily=precipitation_sum&timezone=auto", timeout=5)
-            data = res.json()
-            st.session_state['live_temp'] = float(data['current']['temperature_2m'])
-            st.session_state['live_hum'] = int(data['current']['relative_humidity_2m'])
-            st.session_state['forecast_rain'] = float(data['daily']['precipitation_sum'][0])
-            st.success("✅ Weather Synced Successfully!")
-        except Exception as e:
-            st.warning("⚠️ API connection failed. Using fallback simulation values.")
-
-    col1, col2, col3 = st.columns([1, 1, 2])
-    with col1:
-        n_val = st.slider("Nitrogen (N)", 0, 150, 60)
-        p_val = st.slider("Phosphorus (P)", 0, 100, 30)
-        k_val = st.slider("Potassium (K)", 0, 100, 40)
-        ph_val = st.slider("Soil pH", 4.0, 9.0, 6.5)
-    with col2:
-        t_val = st.slider("Current Ambient Temp (°C)", 10.0, 50.0, float(st.session_state['live_temp']))
-        h_val = st.slider("Current Humidity (%)", 10, 100, int(st.session_state['live_hum']))
-        r_val = st.slider("48hr Weather Forecast Rain (mm)", 0.0, 50.0, float(st.session_state['forecast_rain']))
-        sm_val = st.slider("Current Soil Moisture (%)", 0, 100, 35)
+    st.write("")
+    col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+    col_m1.metric("Total Monitored Land", "4,280 Acres", "+12% this month")
+    col_m2.metric("Freshwater Saved", "18.4M Liters", "38.5% vs Flood")
+    col_m3.metric("Verified CO2 Offsets", "1,420 tCO2e", "AWD Method")
+    col_m4.metric("Farmer Payout Pool", "₹28.4 Lakhs", "85% to Farmers")
     
-    input_df = pd.DataFrame([[n_val, p_val, k_val, t_val, h_val, r_val, ph_val, sm_val]], columns=feature_names)
-    water_pred = ai_model.predict(input_df)[0]
-    flood_water = water_pred * 1.65 
-    
-    with col3:
-        st.subheader("AI Irrigation Action Plan")
-        if r_val > 15.0:
-            st.error(f"🌧️ **Heavy Rain Forecast ({r_val}mm):** Postpone irrigation! Natural rainfall will replenish soil moisture.")
-            water_pred = 0.0 
+    st.markdown("### 🛰️ Interactive Farm Map View")
+    if not vellore_farms.empty:
+        # Dynamic compatibility check for newer Plotly versions (6.x/7.x)
+        if hasattr(px, "scatter_map"):
+            fig_map = px.scatter_map(
+                vellore_farms, lat="lat", lon="lon", color="status", size="acres",
+                hover_name="name", hover_data=["fpo", "crop", "acres", "moisture"],
+                color_discrete_map={"Optimal": "#10b981", "Deficit": "#f59e0b", "Critical": "#ef4444"},
+                zoom=10, height=450
+            )
+            fig_map.update_layout(map_style="carto-darkmatter", margin={"r":0,"t":0,"l":0,"b":0})
         else:
-            st.info(f"💧 **Optimal Drip Irrigation:** {int(water_pred)} Liters/Acre recommended today.")
+            fig_map = px.scatter_mapbox(
+                vellore_farms, lat="lat", lon="lon", color="status", size="acres",
+                hover_name="name", hover_data=["fpo", "crop", "acres", "moisture"],
+                color_discrete_map={"Optimal": "#10b981", "Deficit": "#f59e0b", "Critical": "#ef4444"},
+                zoom=10, height=450
+            )
+            fig_map.update_layout(mapbox_style="carto-darkmatter", margin={"r":0,"t":0,"l":0,"b":0})
             
-        st.warning(f"🌊 **Traditional Flood Irrigation:** {int(flood_water)} Liters/Acre today.")
-        st.success(f"📈 **Freshwater Saved:** {int(flood_water - water_pred)} Liters/Acre")
-
-    # ==========================================
-    # RECURSIVE LEARNING + CLOUD DATA ACCUMULATION
-    # ==========================================
-    st.markdown("---")
-    st.subheader("🧬 Recursive Learning & Cloud Data Accumulation")
-    st.caption("Submit field feedback. This retrains the model dynamically AND securely archives the telemetry in Google Drive.")
-
-    with st.form("feedback_form"):
-        col_f1, col_f2 = st.columns(2)
-        with col_f1:
-            actual_water_used = st.number_input("Actual Water Used (Liters/Acre)", min_value=0.0, max_value=10000.0, value=float(water_pred))
-        with col_f2:
-            feedback_notes = st.selectbox("Field Performance Feedback", [
-                "Optimal Growth", "Slight Moisture Stress", "Slight Over-saturation"
-            ])
+        try:
+            st.plotly_chart(fig_map, use_container_width=True)
+        except Exception:
+            st.plotly_chart(fig_map) # Fallback for newer Streamlit 1.65.0 deprecations
         
-        submit_feedback = st.form_submit_button("🔄 Retrain AI & Sync to Google Drive")
+        st.write("")
+        st.markdown("### 🔎 Selected Field Telemetry Breakout")
+        selected_farm_name = st.selectbox("Select Farm for Inspection", vellore_farms["name"], label_visibility="collapsed")
+        
+        farm = vellore_farms[vellore_farms["name"] == selected_farm_name].iloc[0]
+        temp, hum, precip = get_live_weather(farm['lat'], farm['lon'])
+        
+        with st.container():
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                st.info(f"**FPO Partner:**\n{farm['fpo']}")
+                st.info(f"**Target Crop:**\n{farm['crop']}")
+            with c2:
+                st.warning(f"**Soil Moisture:**\n{farm['moisture']}% ({'Optimal' if farm['moisture'] >= 30 else 'Deficit'})")
+                st.warning(f"**Acreage:**\n{farm['acres']} Acres")
+            with c3:
+                st.success(f"**Live Local Weather:**\n{temp}°C, {hum}% Humidity")
+                st.success(f"**AWD Compliance:**\nVerified Compliant")
 
-        if submit_feedback:
-            # 1. Retrain local AI Model
-            adjustment = 1.15 if "Stress" in feedback_notes else (0.85 if "Over-saturation" in feedback_notes else 1.0)
-            ai_model.fit(input_df, pd.Series([actual_water_used * adjustment]))
+# --- PAGE 2: AI IRRIGATION SCHEDULER ---
+elif page == "⚡ AI Irrigation Scheduler":
+    st.markdown("<h1 class='gradient-text'>⚡ XGBoost/RandomForest AI Irrigation Simulator</h1>", unsafe_allow_html=True)
+    st.write("Dynamically calculates precise water requirements to eliminate flood irrigation waste.")
+    
+    if 'api_temp' not in st.session_state: st.session_state.api_temp = 34
+    if 'api_hum' not in st.session_state: st.session_state.api_hum = 60
+    if 'api_rain' not in st.session_state: st.session_state.api_rain = 5
+    
+    def fetch_api_data():
+        t, h, r = get_live_weather(12.9716, 79.1589) # VIT Vellore Coordinates
+        st.session_state.api_temp = int(t)
+        st.session_state.api_hum = int(h)
+        st.session_state.api_rain = int(r)
+        st.toast("Live Vellore Weather Synced!", icon="🌤️")
+    
+    st.button("🌤️ Auto-Fill Live Vellore Weather (Open-Meteo API)", on_click=fetch_api_data, use_container_width=True)
+    st.write("")
+    
+    col_inputs, col_results = st.columns([1.2, 1])
+    with col_inputs:
+        with st.expander("🌱 Farm & Soil Parameters", expanded=True):
+            crop_type = st.selectbox("Target Crop", ["Paddy Rice", "Sugarcane", "Groundnut", "Maize"])
+            c_acres, c_soil, c_nitro = st.columns(3)
+            acres = c_acres.number_input("Field Area (Acres)", value=10.0)
+            soil_m = c_soil.slider("Soil Moisture (%)", 10, 80, 25)
+            nitrogen = c_nitro.slider("Nitrogen (mg/kg)", 10, 140, 65)
             
-            # 2. Log "Tonnes of Data" to Google Drive 
-            data_row = [n_val, p_val, k_val, t_val, h_val, r_val, sm_val, float(water_pred), actual_water_used, feedback_notes]
-            success = log_to_google_drive(data_row)
+        with st.expander("🌤️ Live Weather Data", expanded=True):
+            c_temp, c_hum, c_rain = st.columns(3)
+            temp_in = c_temp.slider("Temp (°C)", 20, 45, key='api_temp')
+            humidity_in = c_hum.slider("Humidity (%)", 20, 95, key='api_hum')
+            rain_in = c_rain.slider("Rain (mm)", 0, 50, key='api_rain')
+        
+    with col_results:
+        input_data = pd.DataFrame([{'N': nitrogen, 'P': 40, 'K': 30, 'Temp': temp_in, 'Humidity': humidity_in, 'pH': 6.8, 'Rainfall': rain_in, 'Soil_Moisture': soil_m}])
+        pred_water = model.predict(input_data)[0] * acres
+        flood_water = 8500 * acres
+        water_saved = max(0, flood_water - pred_water)
+        
+        st.markdown("### 💧 Optimization Results")
+        st.metric("Traditional Flood Volume", f"{int(flood_water):,} L/Day")
+        st.metric("EcoHydro AI Drip Volume", f"{int(pred_water):,} L/Day", f"-{round((water_saved/flood_water)*100, 1)}% Saved", delta_color="normal")
+        
+        progress_pct = int((pred_water/flood_water)*100)
+        st.progress(progress_pct, text=f"AI uses only {progress_pct}% of traditional flood water.")
+        st.success(f"**⚡ Monthly Power/Pumping Cost Saved:** ₹{int(water_saved * 30 * 0.012):,}")
+    
+    st.divider()
+    c_chart, c_explain = st.columns(2)
+    with c_chart:
+        st.markdown("#### 📅 7-Day Water Projection")
+        days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+        fig_chart = px.bar(
+            pd.DataFrame({'Day': days, 'Flood': [int(flood_water)]*7, 'AI Drip': [int(pred_water * f) for f in [1.0, 0.92, 1.05, 0.88, 0.95, 1.02, 0.90]]}), 
+            x='Day', y=['Flood', 'AI Drip'], barmode='group',
+            color_discrete_map={"Flood": "#ef4444", "AI Drip": "#10b981"}
+        )
+        fig_chart.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, height=300, legend=dict(yanchor="bottom", y=-0.5, xanchor="center", x=0.5), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        try: st.plotly_chart(fig_chart, use_container_width=True)
+        except Exception: st.plotly_chart(fig_chart)
             
-            if success:
-                st.success("🎉 **Data Accumulated!** AI model retrained locally AND telemetry successfully archived to Google Drive database.")
-                st.balloons()
+    with c_explain:
+        st.markdown("#### 🧠 Explainable AI (XAI) Weights")
+        fig_importance = px.bar(feature_importance, x='Importance', y='Feature', orientation='h', color='Importance', color_continuous_scale="Tealgrn")
+        fig_importance.update_layout(height=300, margin={"r":0,"t":0,"l":0,"b":0}, showlegend=False, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        try: st.plotly_chart(fig_importance, use_container_width=True)
+        except Exception: st.plotly_chart(fig_importance)
 
-elif view == "🍃 Methane & Carbon Ledger":
-    st.header("🍃 Verified Carbon Credit Ledger")
-    ledger_data = pd.DataFrame({
-        "FPO / Cooperative": ["Katpadi FPO", "Kaniyambadi FPO", "Anaicut FPO", "Gudiyatham FPO"],
-        "Acreage Under AWD": [1200, 850, 400, 1500],
-        "Methane Prevented (kg)": [14400, 10200, 4800, 18000],
-        "CO2e Offset (Tons)": [403.2, 285.6, 134.4, 504.0],
-        "Estimated Payout (INR)": ["₹8,06,000", "₹5,70,000", "₹2,68,000", "₹10,08,000"]
-    })
-    st.dataframe(ledger_data, use_container_width=True)
+# --- PAGE 3: CARBON LEDGER ---
+elif page == "🍃 Methane & Carbon Ledger":
+    st.markdown("<h1 class='gradient-text'>🍃 Alternate Wetting and Drying (AWD) Carbon Engine</h1>", unsafe_allow_html=True)
+    st.write("Verifies methane emission reductions via satellite radar (SAR) to mint high-quality ESG carbon credits.")
+    
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Total Credits Minted", "1,314 tCO2e", "+200 this week")
+    c2.metric("Market Price per tCO2e", "₹1,530", "+₹45 vs last month")
+    c3.metric("Total Farmer Liquidity", "₹20,10,420", "Paid Out")
+    
+    st.write("")
+    st.markdown("### 📋 Verified FPO Carbon Credit Batches")
+    ledger_data = pd.DataFrame([
+        {"Batch ID": "#AWD-26-089", "FPO Name": "North Arcot Farmers", "Acres": 450, "Credits (tCO2e)": 810, "Value (INR)": 1245000, "Compliance": 98, "Status": "Paid"},
+        {"Batch ID": "#AWD-26-090", "FPO Name": "Palar River Basin", "Acres": 280, "Credits (tCO2e)": 504, "Value (INR)": 774000, "Compliance": 100, "Status": "Paid"},
+        {"Batch ID": "#AWD-26-091", "FPO Name": "Walajah Organics", "Acres": 150, "Credits (tCO2e)": 270, "Value (INR)": 413100, "Compliance": 92, "Status": "Pending Audit"}
+    ])
+    
+    st.dataframe(
+        ledger_data,
+        column_config={
+            "Batch ID": st.column_config.TextColumn("Batch ID", width="small"),
+            "Value (INR)": st.column_config.NumberColumn("Payout Value", format="₹%d"),
+            "Compliance": st.column_config.ProgressColumn("AWD Compliance %", format="%d%%", min_value=0, max_value=100),
+            "Status": st.column_config.TextColumn("Status")
+        },
+        hide_index=True,
+        use_container_width=True
+    )
+    
+    st.download_button("📥 Download SEBI BRSR ESG Report (CSV)", data=ledger_data.to_csv(index=False).encode('utf-8'), file_name='EcoHydro_Carbon_Audit.csv', mime='text/csv', use_container_width=True)
 
-elif view == "📈 TAM/SAM & Business Model":
-    st.header("📈 Market Sizing & Revenue Model")
-    col1, col2, col3 = st.columns(3)
-    col1.metric("TAM (Global)", "$14 Billion")
-    col2.metric("SAM (India)", "$2.1 Billion")
-    col3.metric("SOM (South India)", "$150 Million")
+# --- PAGE 4: BUSINESS MODEL ---
+elif page == "📈 TAM/SAM & Business Model":
+    st.markdown("<h1 class='gradient-text'>📈 Financial Projections & Market Sizing</h1>", unsafe_allow_html=True)
+    st.write("EcoHydro AI leverages a dual-revenue stream: B2B SaaS for FPOs and a 15% marketplace commission on carbon credits.")
+    
+    st.write("")
+    col_tam1, col_tam2, col_tam3 = st.columns(3)
+    col_tam1.metric("TAM (Smart Ag & Offsets)", "$12.5 Billion", "Global")
+    col_tam2.metric("SAM (Indian Irrigation Automation)", "$1.8 Billion", "South India Focus")
+    col_tam3.metric("SOM (Year 3 Projection)", "$42 Million", "Serviceable Obtainable")
+    
+    st.write("---")
+    st.markdown("### 🧮 Interactive Monetization Calculator")
+    
+    calc_c1, calc_c2 = st.columns([1, 1.5])
+    with calc_c1:
+        st.info("Adjust the sliders to simulate Year-1 Revenue")
+        fpos = st.slider("Onboarded FPOs", 5, 300, 30)
+        credits = st.slider("Carbon Credits Traded (tCO2e)", 1000, 100000, 15000, step=1000)
+        
+        saas_rev = fpos * 2500 * 12
+        carbon_rev = credits * 1650 * 0.15
+        total_arr = saas_rev + carbon_rev
+        
+    with calc_c2:
+        st.markdown(f"""
+        <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 25px; border-radius: 16px;">
+            <h4 style="margin-top: 0; color: #94a3b8; font-size: 0.9rem; text-transform: uppercase;">Projected Annual Recurring Revenue (ARR)</h4>
+            <h1 style="color: #10b981; font-size: 3rem; margin: 10px 0;">₹{(total_arr)/100000:.2f} Lakhs/Yr</h1>
+            <hr style="border-color: rgba(255,255,255,0.1); margin: 15px 0;">
+            <div style="display: flex; justify-content: space-between; font-size: 1.1rem;">
+                <span><b>SaaS Subscriptions:</b> ₹{saas_rev/100000:.2f}L</span>
+                <span><b>Carbon Commission:</b> ₹{carbon_rev/100000:.2f}L</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
