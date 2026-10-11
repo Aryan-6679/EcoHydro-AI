@@ -7,7 +7,7 @@ import requests
 from sklearn.ensemble import RandomForestRegressor
 
 st.set_page_config(
-    page_title="EcoHydro AI - Precision Agriculture Platform",
+    page_title="EcoHydro AI - Precision Agriculture",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -19,24 +19,26 @@ st.markdown("""
     html, body, [class*="css"] {
         font-family: 'Inter', sans-serif !important;
         background-color: #0b0f19;
+        color: #f3f4f6;
     }
     
     /* Premium Glassmorphism Metric Cards */
     [data-testid="metric-container"] {
-        background: rgba(17, 24, 39, 0.7);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
+        background: linear-gradient(145deg, rgba(17, 24, 39, 0.8), rgba(31, 41, 55, 0.4));
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
         padding: 24px;
         border-radius: 20px;
         border: 1px solid rgba(16, 185, 129, 0.15);
-        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
     
     [data-testid="metric-container"]:hover {
         transform: translateY(-5px);
-        box-shadow: 0 10px 40px rgba(16, 185, 129, 0.2);
+        box-shadow: 0 12px 40px rgba(16, 185, 129, 0.25);
         border-color: rgba(16, 185, 129, 0.6);
+        background: linear-gradient(145deg, rgba(17, 24, 39, 0.95), rgba(31, 41, 55, 0.6));
     }
 
     /* Metric Label & Value Styling */
@@ -46,11 +48,13 @@ st.markdown("""
         text-transform: uppercase;
         letter-spacing: 0.1em;
         font-size: 0.8rem;
+        margin-bottom: 8px;
     }
     [data-testid="stMetricValue"] {
         font-weight: 800;
-        color: #f3f4f6 !important;
+        color: #ffffff !important;
         font-size: 2.5rem;
+        text-shadow: 0 2px 10px rgba(0,0,0,0.5);
     }
     [data-testid="stMetricDelta"] {
         font-weight: 600;
@@ -70,19 +74,38 @@ st.markdown("""
     
     /* Sidebar Styling */
     section[data-testid="stSidebar"] {
-        background-color: #111827;
+        background-color: #020617;
         border-right: 1px solid rgba(255,255,255,0.05);
     }
     
     /* Customizing Expanders */
     .streamlit-expanderHeader {
         background-color: rgba(31, 41, 55, 0.5) !important;
-        border-radius: 10px !important;
+        border-radius: 12px !important;
         font-weight: 600 !important;
+        border: 1px solid rgba(255,255,255,0.05);
     }
     
+    /* Dividers */
     hr {
         border-color: rgba(255,255,255,0.08) !important;
+        margin: 2rem 0;
+    }
+    
+    /* Button Styling */
+    .stButton>button {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        transition: all 0.3s ease;
+    }
+    .stButton>button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+        color: white;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -206,7 +229,6 @@ def load_farm_data():
 
 vellore_farms = load_farm_data()
 
-# Calculate status based on moisture
 vellore_farms['status'] = pd.cut(
     vellore_farms['moisture'], 
     bins=[0, 25, 45, 100], 
@@ -214,20 +236,27 @@ vellore_farms['status'] = pd.cut(
 ).astype(str)
 
 with st.sidebar:
-    st.markdown("<h2 style='margin-top: -10px; margin-bottom: 0px; font-weight: 800; color: #10b981 !important;'>EcoHydro AI</h2>", unsafe_allow_html=True)
-    st.caption("Precision Ag v3.0 PRO")
+    st.markdown("<h1 style='margin-top: -10px; margin-bottom: 0px; font-weight: 800; color: #10b981 !important; letter-spacing: -1px;'>EcoHydro AI</h1>", unsafe_allow_html=True)
+    st.caption("PRECISION AGRICULTURE OS v3.0")
     
-    st.divider()
-    page = st.radio("Workspace Module", [
+    st.write("")
+    st.write("")
+    page = st.radio("WORKSPACE MODULES", [
         "GIS Farm Telemetry",
         "AI Irrigation Scheduler",
         "Methane & Carbon Ledger",
         "TAM/SAM & Business Model",
     ], label_visibility="collapsed")
     
-    st.divider()
-    st.caption("System Status: All Sensors Online")
-    st.caption("Last Sync: Just Now")
+    st.write("")
+    st.write("")
+    st.markdown("""
+        <div style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); padding: 15px; border-radius: 10px;">
+            <div style="font-size: 0.8rem; color: #9ca3af; text-transform: uppercase;">System Status</div>
+            <div style="color: #10b981; font-weight: 600; margin-top: 5px;">All Sensors Online</div>
+            <div style="font-size: 0.75rem; color: #6b7280; margin-top: 5px;">Last Sync: Just Now</div>
+        </div>
+    """, unsafe_allow_html=True)
 
 if page == "GIS Farm Telemetry":
     st.markdown("<h1 class='gradient-text'>3D Interactive Farm Telemetry</h1>", unsafe_allow_html=True)
@@ -249,15 +278,15 @@ if page == "GIS Farm Telemetry":
         }
         vellore_farms['color'] = vellore_farms['status'].map(color_map)
         
-        # Glow Effect Layer
+        # Glow Effect Layer (Soft halo around the base)
         scatter_layer = pdk.Layer(
             "ScatterplotLayer",
             data=vellore_farms,
             get_position="[lon, lat]",
             get_fill_color="color",
-            get_radius="acres * 60",
+            get_radius="acres * 80",
             pickable=False,
-            opacity=0.4
+            opacity=0.3
         )
         
         # 3D Column Layer
@@ -278,11 +307,11 @@ if page == "GIS Farm Telemetry":
             latitude=vellore_farms['lat'].mean(),
             longitude=vellore_farms['lon'].mean(),
             zoom=10.2,
-            pitch=50,
-            bearing=-10
+            pitch=55,
+            bearing=-15
         )
         
-        # Streamlit-safe tooltip mapping without complex nested HTML
+        # Bulletproof Tooltip Structure (No Tables, CSS Line breaks, forced nowrap)
         tooltip_html = (
             "<b>Farm:</b> {name} <br/>"
             "<b>FPO Partner:</b> {fpo} <br/>"
@@ -299,49 +328,67 @@ if page == "GIS Farm Telemetry":
             tooltip={
                 "html": tooltip_html,
                 "style": {
-                    "backgroundColor": "#111827",
+                    "backgroundColor": "rgba(17, 24, 39, 0.95)",
                     "color": "#f3f4f6",
                     "border": "1px solid #10b981",
-                    "borderRadius": "10px",
-                    "padding": "15px",
-                    "boxShadow": "0 10px 30px rgba(0,0,0,0.8)",
+                    "borderRadius": "12px",
+                    "padding": "16px",
+                    "boxShadow": "0 10px 40px rgba(0,0,0,0.8)",
                     "fontFamily": "Inter, sans-serif",
                     "fontSize": "14px",
-                    "lineHeight": "1.8",
-                    "zIndex": "99999"
+                    "lineHeight": "1.7",
+                    "zIndex": "99999",
+                    "whiteSpace": "nowrap",
+                    "backdropFilter": "blur(4px)"
                 }
             }
         )
         
         st.pydeck_chart(deck, width="stretch")
         
-        # Granular Analysis Section
         st.write("")
-        st.markdown("### Granular Field Analysis")
-        selected_farm_name = st.selectbox("Select Farm for Inspection", vellore_farms["name"].unique(), label_visibility="collapsed")
+        st.markdown("### Granular HUD Analysis")
+        selected_farm_name = st.selectbox("Select Farm for Deep Inspection", vellore_farms["name"].unique(), label_visibility="collapsed")
         
-        # Securely extract the first match to prevent index errors
         farm_subset = vellore_farms[vellore_farms["name"] == selected_farm_name]
         
         if not farm_subset.empty:
             farm = farm_subset.iloc[0]
             temp, hum, precip = get_live_weather(farm['lat'], farm['lon'])
             
-            with st.container():
-                c1, c2, c3 = st.columns(3)
-                with c1:
-                    st.info(f"**FPO Partner:**\n{farm['fpo']}")
-                    st.info(f"**Target Crop:**\n{farm['crop']}")
-                with c2:
-                    st.warning(f"**Soil Moisture:**\n{farm['moisture']}% ({'Optimal' if farm['moisture'] >= 30 else 'Deficit'})")
-                    st.warning(f"**Acreage:**\n{farm['acres']} Acres")
-                with c3:
-                    st.success(f"**Live Local Weather:**\n{temp} C, {hum}% Humidity")
-                    st.success(f"**AWD Compliance:**\nVerified Compliant")
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                st.markdown(f"""
+                <div style="background: rgba(31, 41, 55, 0.6); padding: 20px; border-radius: 12px; border-left: 4px solid #3b82f6;">
+                    <div style="color: #9ca3af; font-size: 0.85rem; text-transform: uppercase;">FPO Partner</div>
+                    <div style="color: white; font-size: 1.1rem; font-weight: 600; margin-bottom: 10px;">{farm['fpo']}</div>
+                    <div style="color: #9ca3af; font-size: 0.85rem; text-transform: uppercase;">Target Crop</div>
+                    <div style="color: white; font-size: 1.1rem; font-weight: 600;">{farm['crop']}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with c2:
+                status_color = "#10b981" if farm['moisture'] >= 30 else "#ef4444"
+                st.markdown(f"""
+                <div style="background: rgba(31, 41, 55, 0.6); padding: 20px; border-radius: 12px; border-left: 4px solid {status_color};">
+                    <div style="color: #9ca3af; font-size: 0.85rem; text-transform: uppercase;">Soil Moisture</div>
+                    <div style="color: white; font-size: 1.1rem; font-weight: 600; margin-bottom: 10px;">{farm['moisture']}% ({'Optimal' if farm['moisture'] >= 30 else 'Deficit'})</div>
+                    <div style="color: #9ca3af; font-size: 0.85rem; text-transform: uppercase;">Acreage</div>
+                    <div style="color: white; font-size: 1.1rem; font-weight: 600;">{farm['acres']} Acres</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with c3:
+                st.markdown(f"""
+                <div style="background: rgba(31, 41, 55, 0.6); padding: 20px; border-radius: 12px; border-left: 4px solid #f59e0b;">
+                    <div style="color: #9ca3af; font-size: 0.85rem; text-transform: uppercase;">Live Local Weather</div>
+                    <div style="color: white; font-size: 1.1rem; font-weight: 600; margin-bottom: 10px;">{temp} C, {hum}% Humidity</div>
+                    <div style="color: #9ca3af; font-size: 0.85rem; text-transform: uppercase;">AWD Protocol Compliance</div>
+                    <div style="color: #10b981; font-size: 1.1rem; font-weight: 600;">Verified Compliant</div>
+                </div>
+                """, unsafe_allow_html=True)
 
 elif page == "AI Irrigation Scheduler":
     st.markdown("<h1 class='gradient-text'>AI Irrigation Simulator</h1>", unsafe_allow_html=True)
-    st.write("Dynamically calculates precise water requirements to eliminate flood irrigation waste.")
+    st.write("Dynamically calculates precise water requirements utilizing Random Forest predictions to eliminate flood irrigation waste.")
     
     if 'api_temp' not in st.session_state: st.session_state.api_temp = 34
     if 'api_hum' not in st.session_state: st.session_state.api_hum = 60
@@ -354,7 +401,7 @@ elif page == "AI Irrigation Scheduler":
         st.session_state.api_rain = int(r)
         st.toast("Live Vellore Weather Synced")
     
-    st.button("Auto-Fill Live Vellore Weather", on_click=fetch_api_data, width="stretch")
+    st.button("Auto-Fill Live Vellore Weather", on_click=fetch_api_data)
     st.write("")
     
     col_inputs, col_results = st.columns([1.2, 1], gap="large")
@@ -384,7 +431,7 @@ elif page == "AI Irrigation Scheduler":
         flood_water = 8500 * acres
         water_saved = max(0, flood_water - pred_water)
         
-        st.markdown("<h3 style='margin-top: 0;'>Optimization Results</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='margin-top: 0; margin-bottom: 20px;'>Optimization Results</h3>", unsafe_allow_html=True)
         st.metric("Traditional Flood Volume", f"{int(flood_water):,} L/Day")
         
         if pred_water == 0:
@@ -397,9 +444,9 @@ elif page == "AI Irrigation Scheduler":
         st.progress(progress_pct, text=f"AI uses only {progress_pct}% of traditional flood water.")
         
         st.markdown(f"""
-        <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 15px; border-radius: 12px; margin-top: 20px;">
-            <b style="color: #10b981;">Monthly Pumping Cost Saved:</b><br/>
-            <span style="font-size: 1.5rem; font-weight: 800; color: white;">INR {int(water_saved * 30 * 0.012):,}</span>
+        <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%); border: 1px solid rgba(16, 185, 129, 0.3); padding: 20px; border-radius: 16px; margin-top: 25px;">
+            <div style="color: #10b981; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.85rem;">Monthly Pumping Cost Saved</div>
+            <div style="font-size: 2rem; font-weight: 800; color: white; margin-top: 5px;">INR {int(water_saved * 30 * 0.012):,}</div>
         </div>
         """, unsafe_allow_html=True)
     
@@ -415,13 +462,13 @@ elif page == "AI Irrigation Scheduler":
             color_discrete_map={"Flood": "#ef4444", "AI Drip": "#10b981"}
         )
         fig_chart.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, height=300, legend=dict(yanchor="bottom", y=-0.5, xanchor="center", x=0.5), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#9ca3af")
-        st.plotly_chart(fig_chart, width="stretch")
+        st.plotly_chart(fig_chart, use_container_width=True)
             
     with c_explain:
-        st.markdown("#### Explainable AI Weights")
+        st.markdown("#### Explainable AI Feature Weights")
         fig_importance = px.bar(feature_importance, x='Importance', y='Feature', orientation='h', color='Importance', color_continuous_scale="Tealgrn")
         fig_importance.update_layout(height=300, margin={"r":0,"t":0,"l":0,"b":0}, showlegend=False, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#9ca3af")
-        st.plotly_chart(fig_importance, width="stretch")
+        st.plotly_chart(fig_importance, use_container_width=True)
 
 elif page == "Methane & Carbon Ledger":
     st.markdown("<h1 class='gradient-text'>AWD Carbon Protocol Engine</h1>", unsafe_allow_html=True)
@@ -453,7 +500,7 @@ elif page == "Methane & Carbon Ledger":
         width="stretch"
     )
     
-    st.download_button("Download SEBI BRSR ESG Report (CSV)", data=ledger_data.to_csv(index=False).encode('utf-8'), file_name='EcoHydro_Carbon_Audit.csv', mime='text/csv', width="stretch")
+    st.download_button("Download SEBI BRSR ESG Report (CSV)", data=ledger_data.to_csv(index=False).encode('utf-8'), file_name='EcoHydro_Carbon_Audit.csv', mime='text/csv')
 
 elif page == "TAM/SAM & Business Model":
     st.markdown("<h1 class='gradient-text'>Financial Projections & Market Sizing</h1>", unsafe_allow_html=True)
@@ -466,11 +513,11 @@ elif page == "TAM/SAM & Business Model":
     col_tam3.metric("SOM (Year 3 Projection)", "$42 Million", "Serviceable Obtainable")
     
     st.write("---")
-    st.markdown("### Interactive Monetization Calculator")
+    st.markdown("### Interactive Monetization Simulator")
     
     calc_c1, calc_c2 = st.columns([1, 1.5], gap="large")
     with calc_c1:
-        st.info("Adjust the sliders to simulate Year-1 Revenue")
+        st.info("Adjust the sliders below to simulate Year-1 Revenue")
         fpos = st.slider("Onboarded FPOs", 5, 300, 30)
         credits = st.slider("Carbon Credits Traded (tCO2e)", 1000, 100000, 15000, step=1000)
         
@@ -480,13 +527,13 @@ elif page == "TAM/SAM & Business Model":
         
     with calc_c2:
         st.markdown(f"""
-        <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.4); padding: 35px; border-radius: 20px; box-shadow: 0 10px 40px rgba(16, 185, 129, 0.1);">
-            <h4 style="margin-top: 0; color: #9ca3af; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em;">Projected Annual Recurring Revenue</h4>
-            <h1 style="color: #10b981; font-size: 3.5rem; margin: 15px 0; font-weight: 800;">INR {(total_arr)/100000:.2f} Lakhs</h1>
-            <hr style="border-color: rgba(255,255,255,0.1); margin: 20px 0;">
-            <div style="display: flex; justify-content: space-between; font-size: 1.15rem; color: #e5e7eb;">
-                <span><b>SaaS Subscriptions:</b><br/>INR {saas_rev/100000:.2f}L / Year</span>
-                <span style="text-align: right;"><b>Carbon Commission:</b><br/>INR {carbon_rev/100000:.2f}L / Year</span>
+        <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(6, 182, 212, 0.15) 100%); border: 1px solid rgba(16, 185, 129, 0.4); padding: 40px; border-radius: 20px; box-shadow: 0 10px 40px rgba(16, 185, 129, 0.15);">
+            <h4 style="margin-top: 0; color: #9ca3af; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600;">Projected Annual Recurring Revenue</h4>
+            <h1 style="color: #ffffff; font-size: 4rem; margin: 15px 0; font-weight: 800; text-shadow: 0 2px 15px rgba(16,185,129,0.4);">INR {(total_arr)/100000:.2f} Lakhs</h1>
+            <hr style="border-color: rgba(255,255,255,0.1); margin: 25px 0;">
+            <div style="display: flex; justify-content: space-between; font-size: 1.2rem; color: #e5e7eb;">
+                <span><b>SaaS Subscriptions:</b><br/><span style="color:#10b981;">INR {saas_rev/100000:.2f}L / Year</span></span>
+                <span style="text-align: right;"><b>Carbon Commission:</b><br/><span style="color:#06b6d4;">INR {carbon_rev/100000:.2f}L / Year</span></span>
             </div>
         </div>
         """, unsafe_allow_html=True)
