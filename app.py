@@ -6,6 +6,7 @@ import pydeck as pdk
 import requests
 import re
 from sklearn.ensemble import RandomForestRegressor
+
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
@@ -22,13 +23,11 @@ st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     
-    /* Base Typography & Background with Radial Gradient */
+    /* Base Typography & Background */
     html, body, [class*="css"], .stApp {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
-        background-color: #050505 !important; 
-        background-image: radial-gradient(circle at 50% -20%, #1a1a2e 0%, #050505 70%) !important;
-        background-attachment: fixed;
-        color: #e4e4e7; 
+        background-color: #09090b !important; /* Zinc 950 - Deepest black */
+        color: #e4e4e7; /* Zinc 200 */
     }
     
     /* Hide Streamlit dev elements */
@@ -36,34 +35,26 @@ st.markdown("""
     
     /* Clean Sidebar */
     section[data-testid="stSidebar"] {
-        background-color: rgba(10, 10, 12, 0.6) !important;
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border-right: 1px solid rgba(255, 255, 255, 0.05);
+        background-color: #111113 !important;
+        border-right: 1px solid #27272a;
     }
     
-    /* Metric Cards - Premium Glassmorphism */
+    /* Metric Cards - Premium Glass & Gradient Style */
     [data-testid="metric-container"] {
-        background: rgba(20, 20, 25, 0.4);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
+        background: linear-gradient(180deg, #18181b 0%, #111113 100%);
         padding: 24px 20px;
-        border-radius: 16px;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-top: 1px solid rgba(255, 255, 255, 0.15);
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        animation: fadeIn 0.6s ease-out;
+        border-radius: 12px;
+        border: 1px solid #27272a;
+        border-top: 1px solid #3f3f46; /* Subtle light top border for 3D effect */
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+        transition: all 0.2s ease;
     }
-    
     [data-testid="metric-container"]:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 12px 40px 0 rgba(16, 185, 129, 0.15);
-        border-color: rgba(16, 185, 129, 0.4);
+        border-color: #52525b;
+        transform: translateY(-2px);
     }
-    
     [data-testid="stMetricLabel"] {
-        color: #a1a1aa !important;
+        color: #a1a1aa !important; /* Zinc 400 */
         font-size: 0.8rem;
         font-weight: 600;
         letter-spacing: 0.05em;
@@ -71,46 +62,44 @@ st.markdown("""
         margin-bottom: 8px;
     }
     [data-testid="stMetricValue"] {
-        color: #fafafa !important;
+        color: #fafafa !important; /* Zinc 50 */
         font-size: 2.2rem;
         font-weight: 700;
         line-height: 1.2;
     }
+    [data-testid="stMetricDelta"] {
+        font-size: 0.85rem;
+        font-weight: 500;
+        margin-top: 4px;
+    }
     
-    /* Headers with Gradient Text */
+    /* Headers */
+    h1, h2, h3, h4, h5 {
+        color: #fafafa !important;
+        font-weight: 600 !important;
+        letter-spacing: -0.02em;
+    }
     .main-header {
-        font-size: 2.2rem;
-        font-weight: 800;
-        background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        font-size: 2rem;
+        font-weight: 700;
+        color: #ffffff;
+        border-bottom: 1px solid #27272a;
         padding-bottom: 1rem;
         margin-bottom: 2rem;
-        animation: fadeInDown 0.5s ease-out;
     }
     
     /* HUD Cards for Granular Data */
     .hud-card {
-        background: rgba(20, 20, 25, 0.4);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-top: 1px solid rgba(255, 255, 255, 0.15);
-        border-radius: 16px;
+        background-color: #18181b;
+        border: 1px solid #27272a;
+        border-radius: 12px;
         padding: 20px;
         display: flex;
         flex-direction: column;
         gap: 16px;
         height: 100%;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-        transition: all 0.3s ease;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
     }
-    .hud-card:hover {
-        background: rgba(30, 30, 35, 0.6);
-        border-color: rgba(255, 255, 255, 0.2);
-    }
-    
     .hud-label {
         font-size: 0.75rem;
         color: #a1a1aa;
@@ -131,48 +120,37 @@ st.markdown("""
     .status-critical { border-left: 4px solid #ef4444; }
     .status-info { border-left: 4px solid #3b82f6; }
     
-    /* Inputs & Buttons */
-    .stSelectbox>div>div, .stNumberInput>div>div {
-        background-color: rgba(20, 20, 25, 0.6) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        border-radius: 8px !important;
-    }
-    
+    /* Buttons */
     .stButton>button {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        color: #ffffff;
-        border: none;
-        border-radius: 8px;
+        background-color: #fafafa;
+        color: #09090b;
+        border: 1px solid #fafafa;
+        border-radius: 6px;
         font-weight: 600;
         padding: 10px 24px;
         transition: all 0.2s;
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
     }
     .stButton>button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(16, 185, 129, 0.5);
-        color: #ffffff;
+        background-color: #e4e4e7;
+        color: #09090b;
+        border-color: #e4e4e7;
     }
     
     /* Expanders & Dividers */
     .streamlit-expanderHeader {
-        background: rgba(20, 20, 25, 0.4) !important;
-        backdrop-filter: blur(12px) !important;
+        background-color: #18181b !important;
         border-radius: 8px !important;
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        border: 1px solid #27272a;
         font-weight: 500;
     }
-    hr { border-color: rgba(255, 255, 255, 0.08) !important; margin: 2rem 0; }
+    hr { border-color: #27272a !important; margin: 2rem 0; }
     
-    ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-track { background: #09090b; }
-    ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
-    
-    /* Animations */
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes fadeInDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-    
+    /* Streamlit Dataframes */
+    .stDataFrame {
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid #27272a;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -241,10 +219,12 @@ def log_to_google_drive(payload):
             creds = ServiceAccountCredentials.from_json_keyfile_name("gcp_credentials.json", scope)
             client = gspread.authorize(creds)
             
+            # Note: Ensure a sheet named 'EcoHydro_AI_Training_Data' exists and is shared with your service account email
             sheet = client.open("EcoHydro_AI_Training_Data").sheet1 
             sheet.append_row(payload)
             return True, "Data successfully synced to Google Sheets!"
         else:
+            # Simulated success for demonstration if keys are missing
             return True, "✅ [Simulation Mode] Telemetry uploaded to cloud! (Add 'gcp_credentials.json' to enable actual Google Drive integration)"
     except Exception as e:
         return False, f"Failed to sync to Google Drive: {str(e)}"
@@ -253,7 +233,11 @@ def load_farm_data():
     df = pd.DataFrame()
     try:
         raw_df = pd.read_csv("vellore_farm_data.csv")
+        
+        # PRE-SANITIZATION: Strip exact duplicate columns instantly to prevent Pandas crashing
         raw_df = raw_df.loc[:, ~raw_df.columns.duplicated()]
+        
+        # Standardize column headers to lowercase
         raw_df.columns = raw_df.columns.astype(str).str.strip().str.lower()
         
         col_mapping = {
@@ -265,11 +249,14 @@ def load_farm_data():
             'crop name': 'crop', 'target crop': 'crop', 'harvest': 'crop'
         }
         df = raw_df.rename(columns=col_mapping)
+        
+        # POST-SANITIZATION: Ensure no duplicate columns were created during rename
         df = df.loc[:, ~df.columns.duplicated()]
         
     except Exception:
         pass
 
+    # Fallback Generation if empty or completely failed
     if df.empty:
         np.random.seed(42)
         num_farms = 25
@@ -283,6 +270,7 @@ def load_farm_data():
             "crop": np.random.choice(["Paddy Rice", "Sugarcane", "Groundnut"], num_farms)
         })
 
+    # Ensure required columns exist, mapping defaults if completely absent
     for col in ['name', 'fpo', 'crop', 'acres', 'moisture', 'lat', 'lon']:
         if col not in df.columns:
             if col == 'fpo': df[col] = "Vellore Agri Hub"
@@ -293,6 +281,7 @@ def load_farm_data():
             elif col == 'lat': df[col] = 12.92
             elif col == 'lon': df[col] = 79.10
 
+    # Intelligent Name Enhancement (replaces F-01 with realistic Vellore names)
     def enhance_name(val, idx):
         val_str = str(val).strip()
         if pd.isna(val) or re.match(r'^(F-?\d+|\d+|Farm\s*\d+|Plot\s*\d+)$', val_str, re.IGNORECASE):
@@ -302,6 +291,7 @@ def load_farm_data():
 
     df['name'] = [enhance_name(x, i) for i, x in enumerate(df['name'])]
 
+    # Enforce strict typing to prevent PyDeck/PyArrow serialization drops
     df['name'] = df['name'].astype(str)
     df['fpo'] = df['fpo'].astype(str)
     df['crop'] = df['crop'].astype(str)
@@ -310,6 +300,7 @@ def load_farm_data():
     df['lat'] = pd.to_numeric(df['lat'], errors='coerce').fillna(12.92)
     df['lon'] = pd.to_numeric(df['lon'], errors='coerce').fillna(79.10)
 
+    # Add Categorical Status
     df['status'] = pd.cut(
         df['moisture'], 
         bins=[-np.inf, 25, 45, np.inf], 
@@ -330,10 +321,6 @@ with st.sidebar:
         "Methane & Carbon Ledger",
         "TAM/SAM & Business Model",
     ], label_visibility="collapsed")
-    
-    # Intentionally removed the "All Sensors Online" mockup block based on previous feedback.
-    st.write("")
-    st.write("")
 
 if page == "GIS Farm Telemetry":
     st.markdown("<div class='main-header'>GIS Farm Telemetry</div>", unsafe_allow_html=True)
@@ -347,7 +334,6 @@ if page == "GIS Farm Telemetry":
     st.write("")
     
     if not vellore_farms.empty:
-        # Use lambda mapping to prevent Pandas crashing on assigning lists to NaN values
         color_map = {
             "Optimal": [16, 185, 129, 230],     # Emerald
             "Deficit": [245, 158, 11, 230],     # Amber
@@ -355,17 +341,18 @@ if page == "GIS Farm Telemetry":
         }
         vellore_farms['color'] = vellore_farms['status'].apply(lambda x: color_map.get(x, [16, 185, 129, 230]))
         
+        # Base Scatter Layer (Glow effect)
         scatter_layer = pdk.Layer(
             "ScatterplotLayer",
-            id="farm_points",       # Added explicit ID for reliable selection lookup
             data=vellore_farms,
             get_position="[lon, lat]",
             get_fill_color="color",
             get_radius="acres * 150", 
-            pickable=True,          # Must be True to register clicks/hovers
+            pickable=False,            # Disabled picking to remove tooltip
             opacity=0.4
         )
         
+        # 3D Column Layer
         column_layer = pdk.Layer(
             "ColumnLayer",
             data=vellore_farms,
@@ -387,72 +374,27 @@ if page == "GIS Farm Telemetry":
             bearing=-15
         )
         
-        # Keep tooltips so hover works, but selection drives the main side panel
-        deck_tooltip = {
-            "html": "<b style='color: #10b981;'>{name}</b><br/><span style='font-size: 0.8rem; color: #a1a1aa;'>Click marker to sync side panel</span>",
-            "style": {
-                "backgroundColor": "#18181b",
-                "color": "#fafafa",
-                "zIndex": "2147483647",
-                "border": "1px solid #27272a",
-                "borderRadius": "6px",
-                "padding": "8px"
-            }
-        }
-        
+        # Disabled the native deck_tooltip
         deck = pdk.Deck(
             map_provider="carto",
             map_style="dark", 
             layers=[scatter_layer, column_layer],
             initial_view_state=view_state,
-            tooltip=deck_tooltip
+            tooltip=False
         )
         
+        # Create a 2-column layout: Map on the left (wider), Drop Box & Details on the right
         col_map, col_details = st.columns([2.5, 1], gap="large")
         
         with col_map:
-            st.markdown("""
-                <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;'>
-                    <span style='font-size: 0.85rem; color: #a1a1aa; font-weight: 600; text-transform: uppercase;'>Telemetry Map</span>
-                    <span style='font-size: 0.75rem; color: #10b981; background: rgba(16,185,129,0.1); padding: 4px 10px; border-radius: 6px; font-weight: 500;'>👆 Click map markers to sync data</span>
-                </div>
-            """, unsafe_allow_html=True)
-            
-            # Using st.pydeck_chart with on_select triggers a rerun when a user clicks a marker
-            map_event = st.pydeck_chart(
-                deck, 
-                width="stretch", 
-                on_select="rerun", 
-                selection_mode="single-object"
-            )
+            st.pydeck_chart(deck, width="stretch")
             
         with col_details:
             st.markdown("<h4 style='margin-top: 0;'>Target Diagnostics</h4>", unsafe_allow_html=True)
-            farm_names = list(vellore_farms["name"].unique())
+            farm_names = vellore_farms["name"].unique()
             
             if len(farm_names) > 0:
-                clicked_farm_name = None
-                
-                if hasattr(map_event, 'selection') and map_event.selection:
-                    try:
-                        # Extract the selected record using Streamlit's selection schema (.objects[layer_id])
-                        selection_objects = getattr(map_event.selection, "objects", {})
-                        
-                        # Fallback for dictionary notation just in case
-                        if not selection_objects and isinstance(map_event.selection, dict):
-                            selection_objects = map_event.selection.get("objects", {})
-                            
-                        if "farm_points" in selection_objects and len(selection_objects["farm_points"]) > 0:
-                            clicked_farm_name = selection_objects["farm_points"][0].get("name")
-                    except Exception as e:
-                        pass
-                
-                # Default index logic handles keeping the dropdown synced with the map click
-                default_index = 0
-                if clicked_farm_name in farm_names:
-                    default_index = farm_names.index(clicked_farm_name)
-                    
-                selected_farm_name = st.selectbox("Select Target Farm", farm_names, index=default_index, label_visibility="collapsed")
+                selected_farm_name = st.selectbox("Select Target Farm", farm_names, label_visibility="collapsed")
                 farm_subset = vellore_farms[vellore_farms["name"] == selected_farm_name]
                 
                 if not farm_subset.empty:
@@ -551,9 +493,9 @@ elif page == "AI Irrigation Scheduler":
         st.progress(progress_pct)
         
         st.markdown(f"""
-        <div style="background: rgba(20, 20, 25, 0.4); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); border-top: 1px solid rgba(255, 255, 255, 0.2); padding: 24px; border-radius: 16px; margin-top: 24px; box-shadow: 0 8px 32px 0 rgba(0,0,0,0.3);">
+        <div style="background: linear-gradient(180deg, #18181b 0%, #111113 100%); border: 1px solid #27272a; padding: 24px; border-radius: 12px; margin-top: 24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);">
             <div style="color: #a1a1aa; font-weight: 600; font-size: 0.75rem; text-transform: uppercase;">Estimated Pumping OPEX Saved</div>
-            <div style="font-size: 2.2rem; font-weight: 800; color: #10b981; margin-top: 4px;">INR {int(water_saved * 30 * 0.012):,}</div>
+            <div style="font-size: 2.2rem; font-weight: 700; color: #10b981; margin-top: 4px;">INR {int(water_saved * 30 * 0.012):,}</div>
         </div>
         """, unsafe_allow_html=True)
         
@@ -563,8 +505,10 @@ elif page == "AI Irrigation Scheduler":
         
         if st.button("🚀 Sync Telemetry & Feedback to Google Drive", use_container_width=True):
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            # Simulate a satellite NDVI (Vegetation Index) based on soil moisture and crop type logic
             satellite_ndvi = round(np.clip((soil_m / 100) + np.random.uniform(0.1, 0.3), 0, 1), 2)
             
+            # Prepare row data for Google Sheets
             payload = [
                 timestamp, crop_type, acres, soil_m, nitrogen, 
                 temp_in, humidity_in, rain_in, int(pred_water), satellite_ndvi
@@ -589,6 +533,7 @@ elif page == "AI Irrigation Scheduler":
             x='Day', y=['Flood', 'AI Drip'], barmode='group',
             color_discrete_map={"Flood": "#3f3f46", "AI Drip": "#10b981"}
         )
+        # Margin fixes to prevent Legend overlapping with X-Axis
         fig_chart.update_layout(
             margin={"r":0,"t":10,"l":0,"b":80}, 
             height=320, 
@@ -596,8 +541,8 @@ elif page == "AI Irrigation Scheduler":
             paper_bgcolor="rgba(0,0,0,0)", 
             plot_bgcolor="rgba(0,0,0,0)", 
             font_color="#a1a1aa",
-            yaxis=dict(gridcolor="rgba(255,255,255,0.05)"),
-            xaxis=dict(gridcolor="rgba(255,255,255,0.05)")
+            yaxis=dict(gridcolor="#27272a"),
+            xaxis=dict(gridcolor="#27272a")
         )
         st.plotly_chart(fig_chart, width="stretch")
             
@@ -615,8 +560,8 @@ elif page == "AI Irrigation Scheduler":
             paper_bgcolor="rgba(0,0,0,0)", 
             plot_bgcolor="rgba(0,0,0,0)", 
             font_color="#a1a1aa",
-            xaxis=dict(gridcolor="rgba(255,255,255,0.05)"),
-            yaxis=dict(gridcolor="rgba(255,255,255,0.05)")
+            xaxis=dict(gridcolor="#27272a"),
+            yaxis=dict(gridcolor="#27272a")
         )
         st.plotly_chart(fig_importance, width="stretch")
 
@@ -672,17 +617,17 @@ elif page == "TAM/SAM & Business Model":
         
     with calc_c2:
         st.markdown(f"""
-        <div style="background: rgba(20, 20, 25, 0.4); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); border-top: 1px solid rgba(255, 255, 255, 0.2); padding: 32px; border-radius: 16px; box-shadow: 0 8px 32px 0 rgba(0,0,0,0.3); animation: fadeIn 0.6s ease-out;">
+        <div style="background: linear-gradient(180deg, #18181b 0%, #111113 100%); border: 1px solid #27272a; padding: 32px; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.4);">
             <div style="color: #a1a1aa; font-size: 0.85rem; text-transform: uppercase; font-weight: 600;">Projected Annual Recurring Revenue (ARR)</div>
-            <div style="color: #fafafa; font-size: 3.5rem; font-weight: 800; margin: 8px 0 20px 0; letter-spacing: -0.02em;">INR {(total_arr)/100000:.2f}L</div>
-            <div style="display: flex; gap: 32px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 20px;">
+            <div style="color: #fafafa; font-size: 3.5rem; font-weight: 700; margin: 8px 0 20px 0;">INR {(total_arr)/100000:.2f}L</div>
+            <div style="display: flex; gap: 32px; border-top: 1px solid #27272a; padding-top: 20px;">
                 <div>
-                    <div style="color: #a1a1aa; font-size: 0.75rem; text-transform: uppercase; margin-bottom: 4px; font-weight: 600;">SaaS Revenue</div>
-                    <div style="color: #fafafa; font-weight: 700; font-size: 1.2rem;">INR {saas_rev/100000:.2f}L</div>
+                    <div style="color: #a1a1aa; font-size: 0.75rem; text-transform: uppercase; margin-bottom: 4px;">SaaS Revenue</div>
+                    <div style="color: #fafafa; font-weight: 600; font-size: 1.2rem;">INR {saas_rev/100000:.2f}L</div>
                 </div>
                 <div>
-                    <div style="color: #a1a1aa; font-size: 0.75rem; text-transform: uppercase; margin-bottom: 4px; font-weight: 600;">Commission (15%)</div>
-                    <div style="color: #10b981; font-weight: 700; font-size: 1.2rem;">INR {carbon_rev/100000:.2f}L</div>
+                    <div style="color: #a1a1aa; font-size: 0.75rem; text-transform: uppercase; margin-bottom: 4px;">Commission (15%)</div>
+                    <div style="color: #10b981; font-weight: 600; font-size: 1.2rem;">INR {carbon_rev/100000:.2f}L</div>
                 </div>
             </div>
         </div>
