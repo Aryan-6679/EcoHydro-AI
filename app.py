@@ -152,7 +152,8 @@ def load_farm_data():
         # 3. Rename custom CSV headers to standard app variables
         col_mapping = {
             'farm': 'name', 'farm name': 'name', 'farm_name': 'name', 'id': 'name',
-            'area': 'acres', 'area (acres)': 'acres', 'size': 'acres',
+            'farmer': 'name', 'farmer name': 'name', 'plot': 'name', 'location': 'name', 'village': 'name',
+            'area': 'acres', 'area (acres)': 'acres', 'size': 'acres', 'acreage': 'acres',
             'soil moisture': 'moisture', 'soil_moisture': 'moisture', 'humidity': 'moisture',
             'fpo name': 'fpo', 'organization': 'fpo', 'cluster': 'fpo'
         }
@@ -170,8 +171,10 @@ def load_farm_data():
         num_farms = 25
         center_lat, center_lon = 12.92, 79.10
         
+        vellore_regions = ["Karnampattu", "Gudiyatham", "Pallikondai", "Katpadi", "Anaicut", "Arcot", "Walajah", "Ranipet"]
+        
         df = pd.DataFrame({
-            "name": [f"Vellore Sector {i+1}" for i in range(num_farms)],
+            "name": [f"{vellore_regions[i % len(vellore_regions)]} Plot {i+1}" for i in range(num_farms)],
             "lat": center_lat + np.random.uniform(-0.15, 0.15, num_farms),
             "lon": center_lon + np.random.uniform(-0.15, 0.15, num_farms),
             "moisture": np.random.uniform(15, 60, num_farms).round(1),
@@ -181,7 +184,9 @@ def load_farm_data():
         })
         
     # 6. GUARANTEE all required columns exist and are safely formatted for PyDeck HTML injection
-    if 'name' not in df.columns: df['name'] = [f"Farm-0{i+1}" for i in range(len(df))]
+    if 'name' not in df.columns: 
+        local_regions = ["Karnampattu", "Gudiyatham", "Pallikondai", "Katpadi", "Anaicut", "Walajah"]
+        df['name'] = [f"{local_regions[i % len(local_regions)]} Field {i+1}" for i in range(len(df))]
     if 'fpo' not in df.columns: df['fpo'] = "Vellore Agri Hub"
     if 'crop' not in df.columns: df['crop'] = "Mixed Crop"
     if 'acres' not in df.columns: df['acres'] = 10.0
