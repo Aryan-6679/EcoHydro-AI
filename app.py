@@ -14,15 +14,14 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Clean, minimalist, high-contrast dark theme inspired by Vercel/Stripe
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     
     /* Base Typography & Background */
-    html, body, [class*="css"] {
+    html, body, [class*="css"], .stApp {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
-        background-color: #09090b; /* Zinc 950 - Deepest black */
+        background-color: #09090b !important; /* Zinc 950 - Deepest black */
         color: #e4e4e7; /* Zinc 200 */
     }
     
@@ -31,26 +30,27 @@ st.markdown("""
     
     /* Clean Sidebar */
     section[data-testid="stSidebar"] {
-        background-color: #111113;
+        background-color: #111113 !important;
         border-right: 1px solid #27272a;
     }
     
-    /* Metric Cards - Premium Flat Style */
+    /* Metric Cards - Premium Glass & Gradient Style */
     [data-testid="metric-container"] {
-        background-color: #18181b; /* Zinc 900 */
-        padding: 24px;
-        border-radius: 8px;
+        background: linear-gradient(180deg, #18181b 0%, #111113 100%);
+        padding: 24px 20px;
+        border-radius: 12px;
         border: 1px solid #27272a;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
-        transition: border-color 0.2s ease, transform 0.2s ease;
+        border-top: 1px solid #3f3f46; /* Subtle light top border for 3D effect */
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+        transition: all 0.2s ease;
     }
     [data-testid="metric-container"]:hover {
-        border-color: #3f3f46;
+        border-color: #52525b;
         transform: translateY(-2px);
     }
     [data-testid="stMetricLabel"] {
         color: #a1a1aa !important; /* Zinc 400 */
-        font-size: 0.75rem;
+        font-size: 0.8rem;
         font-weight: 600;
         letter-spacing: 0.05em;
         text-transform: uppercase;
@@ -75,7 +75,7 @@ st.markdown("""
         letter-spacing: -0.02em;
     }
     .main-header {
-        font-size: 1.8rem;
+        font-size: 2rem;
         font-weight: 700;
         color: #ffffff;
         border-bottom: 1px solid #27272a;
@@ -87,15 +87,16 @@ st.markdown("""
     .hud-card {
         background-color: #18181b;
         border: 1px solid #27272a;
-        border-radius: 8px;
+        border-radius: 12px;
         padding: 20px;
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 16px;
         height: 100%;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
     }
     .hud-label {
-        font-size: 0.7rem;
+        font-size: 0.75rem;
         color: #a1a1aa;
         text-transform: uppercase;
         letter-spacing: 0.05em;
@@ -105,13 +106,14 @@ st.markdown("""
         font-size: 1.15rem;
         color: #fafafa;
         font-weight: 500;
+        margin-top: 2px;
     }
     
     /* Status Colors */
-    .status-optimal { border-left: 3px solid #10b981; }
-    .status-deficit { border-left: 3px solid #f59e0b; }
-    .status-critical { border-left: 3px solid #ef4444; }
-    .status-info { border-left: 3px solid #3b82f6; }
+    .status-optimal { border-left: 4px solid #10b981; }
+    .status-deficit { border-left: 4px solid #f59e0b; }
+    .status-critical { border-left: 4px solid #ef4444; }
+    .status-info { border-left: 4px solid #3b82f6; }
     
     /* Buttons */
     .stButton>button {
@@ -119,7 +121,8 @@ st.markdown("""
         color: #09090b;
         border: 1px solid #fafafa;
         border-radius: 6px;
-        font-weight: 500;
+        font-weight: 600;
+        padding: 10px 24px;
         transition: all 0.2s;
     }
     .stButton>button:hover {
@@ -128,13 +131,21 @@ st.markdown("""
         border-color: #e4e4e7;
     }
     
-    /* Expanders */
+    /* Expanders & Dividers */
     .streamlit-expanderHeader {
         background-color: #18181b !important;
-        border-radius: 6px !important;
+        border-radius: 8px !important;
         border: 1px solid #27272a;
+        font-weight: 500;
     }
     hr { border-color: #27272a !important; margin: 2rem 0; }
+    
+    /* Streamlit Dataframes */
+    .stDataFrame {
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid #27272a;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -191,10 +202,11 @@ def load_farm_data():
     df = pd.DataFrame()
     try:
         raw_df = pd.read_csv("vellore_farm_data.csv")
-        # Strip exact duplicate columns instantly to prevent Pandas reindex errors
+        
+        # PRE-SANITIZATION: Strip exact duplicate columns instantly to prevent Pandas crashing
         raw_df = raw_df.loc[:, ~raw_df.columns.duplicated()]
         
-        # Standardize column headers
+        # Standardize column headers to lowercase
         raw_df.columns = raw_df.columns.astype(str).str.strip().str.lower()
         
         col_mapping = {
@@ -206,9 +218,11 @@ def load_farm_data():
             'crop name': 'crop', 'target crop': 'crop', 'harvest': 'crop'
         }
         df = raw_df.rename(columns=col_mapping)
+        
+        # POST-SANITIZATION: Ensure no duplicate columns were created during rename
         df = df.loc[:, ~df.columns.duplicated()]
         
-    except FileNotFoundError:
+    except Exception:
         pass
 
     # Fallback Generation if empty or completely failed
@@ -225,7 +239,7 @@ def load_farm_data():
             "crop": np.random.choice(["Paddy Rice", "Sugarcane", "Groundnut"], num_farms)
         })
 
-    # Ensure required columns exist, mapping defaults if absent
+    # Ensure required columns exist, mapping defaults if completely absent
     for col in ['name', 'fpo', 'crop', 'acres', 'moisture', 'lat', 'lon']:
         if col not in df.columns:
             if col == 'fpo': df[col] = "Vellore Agri Hub"
@@ -236,17 +250,17 @@ def load_farm_data():
             elif col == 'lat': df[col] = 12.92
             elif col == 'lon': df[col] = 79.10
 
-    # Override generic names (like "F-01" or "Farm 1") with highly realistic regional names
+    # Intelligent Name Enhancement (replaces F-01 with realistic Vellore names)
     def enhance_name(val, idx):
         val_str = str(val).strip()
-        if re.match(r'^(F-?\d+|\d+|Farm\s*\d+|Plot\s*\d+)$', val_str, re.IGNORECASE):
-            regions = ["Karnampattu", "Gudiyatham", "Pallikondai", "Katpadi", "Anaicut", "Walajah"]
+        if pd.isna(val) or re.match(r'^(F-?\d+|\d+|Farm\s*\d+|Plot\s*\d+)$', val_str, re.IGNORECASE):
+            regions = ["Karnampattu", "Gudiyatham", "Pallikondai", "Katpadi", "Anaicut", "Walajah", "Ranipet"]
             return f"{regions[idx % len(regions)]} Sector {idx+1}"
         return val_str
 
     df['name'] = [enhance_name(x, i) for i, x in enumerate(df['name'])]
 
-    # Enforce strict typing to prevent PyDeck backend crashes
+    # Enforce strict typing to prevent PyDeck/PyArrow serialization drops
     df['name'] = df['name'].astype(str)
     df['fpo'] = df['fpo'].astype(str)
     df['crop'] = df['crop'].astype(str)
@@ -262,16 +276,42 @@ def load_farm_data():
         labels=["Critical", "Deficit", "Optimal"]
     ).astype(str)
 
+    # PRE-RENDER FULL TOOLTIP IN PYTHON
+    # This totally bypasses PyDeck's flexible string interpolation bugs in fullscreen mode!
+    df['tooltip_html'] = df.apply(
+        lambda row: f"""
+        <div style="font-family: 'Inter', sans-serif; line-height: 1.6; min-width: 200px;">
+            <div style="border-bottom: 1px solid #3f3f46; padding-bottom: 6px; margin-bottom: 6px;">
+                <b style="color: #10b981; font-size: 15px;">{row['name']}</b>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span style="color: #a1a1aa; font-size: 12px;">Partner:</span>
+                <span style="color: #fafafa; font-weight: 600; font-size: 12px;">{row['fpo']}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span style="color: #a1a1aa; font-size: 12px;">Crop:</span>
+                <span style="color: #fafafa; font-weight: 600; font-size: 12px;">{row['crop']}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span style="color: #a1a1aa; font-size: 12px;">Area:</span>
+                <span style="color: #fafafa; font-weight: 600; font-size: 12px;">{row['acres']} Acres</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span style="color: #a1a1aa; font-size: 12px;">Moisture:</span>
+                <span style="color: #fafafa; font-weight: 600; font-size: 12px;">{row['moisture']}% ({row['status']})</span>
+            </div>
+        </div>
+        """, axis=1
+    )
+
     return df
 
-# Load data on refresh
 vellore_farms = load_farm_data()
 
 with st.sidebar:
-    st.markdown("<h3 style='color: #fafafa; font-weight: 700; margin-bottom: 0;'>EcoHydro AI</h3>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #a1a1aa; font-size: 0.8rem; margin-top: 0;'>PRECISION AGRICULTURE OS</p>", unsafe_allow_html=True)
+    st.markdown("<h2 style='color: #fafafa; font-weight: 700; margin-bottom: 0; letter-spacing: -0.05em;'>EcoHydro AI</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #a1a1aa; font-size: 0.75rem; margin-top: 0; margin-bottom: 24px; font-weight: 600; letter-spacing: 0.05em;'>PRECISION AGRICULTURE OS</p>", unsafe_allow_html=True)
     
-    st.write("")
     page = st.radio("WORKSPACE", [
         "GIS Farm Telemetry",
         "AI Irrigation Scheduler",
@@ -282,10 +322,13 @@ with st.sidebar:
     st.write("")
     st.write("")
     st.markdown("""
-        <div style="background-color: #18181b; border: 1px solid #27272a; padding: 16px; border-radius: 8px;">
+        <div style="background-color: #111113; border: 1px solid #27272a; padding: 16px; border-radius: 8px;">
             <div style="font-size: 0.7rem; color: #a1a1aa; text-transform: uppercase; font-weight: 600;">System Status</div>
-            <div style="color: #10b981; font-weight: 500; font-size: 0.9rem; margin-top: 4px;">All Sensors Online</div>
-            <div style="font-size: 0.7rem; color: #71717a; margin-top: 4px;">Last Sync: Just Now</div>
+            <div style="color: #10b981; font-weight: 500; font-size: 0.9rem; margin-top: 4px; display: flex; align-items: center; gap: 6px;">
+                <div style="width: 8px; height: 8px; background-color: #10b981; border-radius: 50%;"></div>
+                All Sensors Online
+            </div>
+            <div style="font-size: 0.7rem; color: #71717a; margin-top: 6px;">Last Sync: Just Now</div>
         </div>
     """, unsafe_allow_html=True)
 
@@ -301,13 +344,13 @@ if page == "GIS Farm Telemetry":
     st.write("")
     
     if not vellore_farms.empty:
-        # Map colors safely avoiding fillna(list) errors
+        # Use lambda mapping to prevent Pandas crashing on assigning lists to NaN values
         color_map = {
-            "Optimal": [16, 185, 129, 255],     # Emerald
-            "Deficit": [245, 158, 11, 255],     # Amber
-            "Critical": [239, 68, 68, 255]      # Red
+            "Optimal": [16, 185, 129, 230],     # Emerald
+            "Deficit": [245, 158, 11, 230],     # Amber
+            "Critical": [239, 68, 68, 230]      # Red
         }
-        vellore_farms['color'] = vellore_farms['status'].apply(lambda x: color_map.get(x, [16, 185, 129, 255]))
+        vellore_farms['color'] = vellore_farms['status'].apply(lambda x: color_map.get(x, [16, 185, 129, 230]))
         
         # Base Scatter Layer (Glow effect)
         scatter_layer = pdk.Layer(
@@ -315,9 +358,9 @@ if page == "GIS Farm Telemetry":
             data=vellore_farms,
             get_position="[lon, lat]",
             get_fill_color="color",
-            get_radius="acres * 80",
+            get_radius="acres * 70",
             pickable=False,
-            opacity=0.3
+            opacity=0.4
         )
         
         # 3D Column Layer
@@ -327,7 +370,7 @@ if page == "GIS Farm Telemetry":
             get_position="[lon, lat]",
             get_elevation="acres",
             elevation_scale=100,
-            radius=250,
+            radius=200,
             get_fill_color="color",
             pickable=True,
             auto_highlight=True,
@@ -337,22 +380,25 @@ if page == "GIS Farm Telemetry":
         view_state = pdk.ViewState(
             latitude=vellore_farms['lat'].mean(),
             longitude=vellore_farms['lon'].mean(),
-            zoom=10.5,
-            pitch=45,
+            zoom=10.2,
+            pitch=50,
             bearing=-15
         )
         
-        # CRITICAL FIX: Use native PyDeck HTML tooltips. 
-        # Setting zIndex to the 32-bit max guarantees it renders above the Streamlit fullscreen overlay.
+        # FULLSCREEN BULLETPROOF TOOLTIP:
+        # 1. We reference the pre-rendered '{tooltip_html}' string to bypass PyDeck parser drops.
+        # 2. We use max zIndex to force it above fullscreen layers.
         deck_tooltip = {
-            "html": "<b>Farm:</b> {name}<br/><b>Partner:</b> {fpo}<br/><b>Crop:</b> {crop}<br/><b>Area:</b> {acres} Acres<br/><b>Moisture:</b> {moisture}% ({status})",
+            "html": "{tooltip_html}",
             "style": {
                 "backgroundColor": "#18181b",
                 "color": "#fafafa",
                 "border": "1px solid #3f3f46",
-                "borderRadius": "6px",
-                "padding": "10px",
-                "zIndex": "2147483647"
+                "borderRadius": "8px",
+                "padding": "12px",
+                "boxShadow": "0 10px 15px -3px rgba(0, 0, 0, 0.6)",
+                "zIndex": "2147483647",
+                "whiteSpace": "normal"
             }
         }
         
@@ -364,7 +410,6 @@ if page == "GIS Farm Telemetry":
             tooltip=deck_tooltip
         )
         
-        # Deprecation fix: replace use_container_width=True with width="stretch"
         st.pydeck_chart(deck, width="stretch")
         
         st.write("")
@@ -388,7 +433,7 @@ if page == "GIS Farm Telemetry":
                             <div class="hud-label">FPO Partner</div>
                             <div class="hud-value">{farm['fpo']}</div>
                         </div>
-                        <div style="margin-top: 4px;">
+                        <div>
                             <div class="hud-label">Target Crop</div>
                             <div class="hud-value">{farm['crop']}</div>
                         </div>
@@ -403,7 +448,7 @@ if page == "GIS Farm Telemetry":
                             <div class="hud-label">Soil Moisture</div>
                             <div class="hud-value">{farm['moisture']}% ({farm['status']})</div>
                         </div>
-                        <div style="margin-top: 4px;">
+                        <div>
                             <div class="hud-label">Acreage</div>
                             <div class="hud-value">{farm['acres']} Acres</div>
                         </div>
@@ -417,7 +462,7 @@ if page == "GIS Farm Telemetry":
                             <div class="hud-label">Live Weather (API)</div>
                             <div class="hud-value">{temp} C, {hum}% Hum</div>
                         </div>
-                        <div style="margin-top: 4px;">
+                        <div>
                             <div class="hud-label">Protocol Status</div>
                             <div class="hud-value" style="color: #10b981;">Verified Compliant</div>
                         </div>
@@ -480,9 +525,9 @@ elif page == "AI Irrigation Scheduler":
         st.progress(progress_pct)
         
         st.markdown(f"""
-        <div style="background-color: #18181b; border: 1px solid #27272a; padding: 16px; border-radius: 8px; margin-top: 20px;">
+        <div style="background: linear-gradient(180deg, #18181b 0%, #111113 100%); border: 1px solid #27272a; padding: 24px; border-radius: 12px; margin-top: 24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);">
             <div style="color: #a1a1aa; font-weight: 600; font-size: 0.75rem; text-transform: uppercase;">Estimated Pumping OPEX Saved</div>
-            <div style="font-size: 1.8rem; font-weight: 700; color: #10b981; margin-top: 4px;">INR {int(water_saved * 30 * 0.012):,}</div>
+            <div style="font-size: 2.2rem; font-weight: 700; color: #10b981; margin-top: 4px;">INR {int(water_saved * 30 * 0.012):,}</div>
         </div>
         """, unsafe_allow_html=True)
     
@@ -497,14 +542,16 @@ elif page == "AI Irrigation Scheduler":
             x='Day', y=['Flood', 'AI Drip'], barmode='group',
             color_discrete_map={"Flood": "#3f3f46", "AI Drip": "#10b981"}
         )
-        # CRITICAL FIX: Increased bottom margin (b=60) to prevent X-axis labels from overlapping with the legend
+        # Margin fixes to prevent Legend overlapping with X-Axis
         fig_chart.update_layout(
-            margin={"r":0,"t":10,"l":0,"b":60}, 
-            height=300, 
-            legend=dict(yanchor="top", y=-0.25, xanchor="center", x=0.5, orientation="h"), 
+            margin={"r":0,"t":10,"l":0,"b":80}, 
+            height=320, 
+            legend=dict(yanchor="top", y=-0.3, xanchor="center", x=0.5, orientation="h"), 
             paper_bgcolor="rgba(0,0,0,0)", 
             plot_bgcolor="rgba(0,0,0,0)", 
-            font_color="#a1a1aa"
+            font_color="#a1a1aa",
+            yaxis=dict(gridcolor="#27272a"),
+            xaxis=dict(gridcolor="#27272a")
         )
         st.plotly_chart(fig_chart, width="stretch")
             
@@ -516,12 +563,14 @@ elif page == "AI Irrigation Scheduler":
             color='Importance', color_continuous_scale="greens"
         )
         fig_importance.update_layout(
-            height=300, 
-            margin={"r":0,"t":10,"l":0,"b":60}, 
+            height=320, 
+            margin={"r":0,"t":10,"l":0,"b":40}, 
             showlegend=False, 
             paper_bgcolor="rgba(0,0,0,0)", 
             plot_bgcolor="rgba(0,0,0,0)", 
-            font_color="#a1a1aa"
+            font_color="#a1a1aa",
+            xaxis=dict(gridcolor="#27272a"),
+            yaxis=dict(gridcolor="#27272a")
         )
         st.plotly_chart(fig_importance, width="stretch")
 
@@ -545,7 +594,7 @@ elif page == "Methane & Carbon Ledger":
         ledger_data,
         column_config={
             "Batch ID": st.column_config.TextColumn("Batch ID", width="small"),
-            "Value (INR)": st.column_config.NumberColumn("Payout Value", format="₹%d"),
+            "Value (INR)": st.column_config.NumberColumn("Payout Value", format="INR %d"),
             "Compliance": st.column_config.ProgressColumn("Compliance Score", format="%d%%", min_value=0, max_value=100),
             "Status": st.column_config.TextColumn("Status")
         },
@@ -577,17 +626,17 @@ elif page == "TAM/SAM & Business Model":
         
     with calc_c2:
         st.markdown(f"""
-        <div style="background-color: #18181b; border: 1px solid #27272a; padding: 32px; border-radius: 8px;">
+        <div style="background: linear-gradient(180deg, #18181b 0%, #111113 100%); border: 1px solid #27272a; padding: 32px; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.4);">
             <div style="color: #a1a1aa; font-size: 0.85rem; text-transform: uppercase; font-weight: 600;">Projected Annual Recurring Revenue (ARR)</div>
-            <div style="color: #fafafa; font-size: 3.5rem; font-weight: 700; margin: 8px 0 16px 0;">INR {(total_arr)/100000:.2f}L</div>
-            <div style="display: flex; gap: 24px; border-top: 1px solid #27272a; padding-top: 16px;">
+            <div style="color: #fafafa; font-size: 3.5rem; font-weight: 700; margin: 8px 0 20px 0;">INR {(total_arr)/100000:.2f}L</div>
+            <div style="display: flex; gap: 32px; border-top: 1px solid #27272a; padding-top: 20px;">
                 <div>
-                    <div style="color: #a1a1aa; font-size: 0.75rem; text-transform: uppercase;">SaaS Revenue</div>
-                    <div style="color: #fafafa; font-weight: 500;">INR {saas_rev/100000:.2f}L</div>
+                    <div style="color: #a1a1aa; font-size: 0.75rem; text-transform: uppercase; margin-bottom: 4px;">SaaS Revenue</div>
+                    <div style="color: #fafafa; font-weight: 600; font-size: 1.2rem;">INR {saas_rev/100000:.2f}L</div>
                 </div>
                 <div>
-                    <div style="color: #a1a1aa; font-size: 0.75rem; text-transform: uppercase;">Commission (15%)</div>
-                    <div style="color: #fafafa; font-weight: 500;">INR {carbon_rev/100000:.2f}L</div>
+                    <div style="color: #a1a1aa; font-size: 0.75rem; text-transform: uppercase; margin-bottom: 4px;">Commission (15%)</div>
+                    <div style="color: #10b981; font-weight: 600; font-size: 1.2rem;">INR {carbon_rev/100000:.2f}L</div>
                 </div>
             </div>
         </div>
