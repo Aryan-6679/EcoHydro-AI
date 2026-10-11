@@ -4,8 +4,6 @@ import numpy as np
 import plotly.express as px
 import requests
 from sklearn.ensemble import RandomForestRegressor
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
 
 # --- PAGE CONFIGURATION & PREMIUM UI ---
 st.set_page_config(
@@ -51,19 +49,6 @@ st.markdown("""
         font-weight: 800;
         color: #f8fafc !important;
         font-size: 2.2rem;
-    }
-    
-    /* Pitch Box */
-    .pitch-box { 
-        background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.02)); 
-        border: 1px solid rgba(245, 158, 11, 0.3); 
-        padding: 18px; 
-        border-radius: 12px; 
-        border-left: 5px solid rgba(245, 158, 11, 1);
-        color: #e2e8f0;
-        font-size: 0.95rem;
-        line-height: 1.5;
-        margin-bottom: 20px;
     }
     
     /* Gradients */
@@ -150,15 +135,6 @@ with st.sidebar:
         "TAM/SAM & Business Model",
     ])
     st.divider()
-    
-    pitch_toggle = st.checkbox("Show Judge Pitch Highlights", value=True)
-    if pitch_toggle:
-        st.markdown("""
-        <div class="pitch-box">
-            <b>Judge Elevator Pitch (30 Sec):</b><br><br>
-            EcoHydro AI eliminates 40% of agricultural freshwater waste using open satellite telemetry and AI, while unlocking up to ₹15,000/acre in corporate carbon credits for smallholder farmers—with <b>Zero Hardware Setup Costs</b>.
-        </div>
-        """, unsafe_allow_html=True)
 
 # --- PAGE 1: GIS TELEMETRY ---
 if page == "GIS Farm Telemetry":
@@ -170,10 +146,11 @@ if page == "GIS Farm Telemetry":
     col_m1.metric("Total Monitored Land", "4,280 Acres", "+12% this month")
     col_m2.metric("Freshwater Saved", "18.4M Liters", "38.5% vs Flood")
     col_m3.metric("Verified CO2 Offsets", "1,420 tCO2e", "AWD Method")
-    col_m4.metric("Farmer Payout Pool", "₹28.4 Lakhs", "85% to Farmers")
+    col_m4.metric("Farmer Payout Pool", "INR 28.4 Lakhs", "85% to Farmers")
     
     st.markdown("### Interactive Farm Map View")
     if not vellore_farms.empty:
+        # Fallback handling for Plotly Mapbox API changes
         if hasattr(px, "scatter_map"):
             fig_map = px.scatter_map(
                 vellore_farms, lat="lat", lon="lon", color="status", size="acres",
@@ -209,7 +186,7 @@ if page == "GIS Farm Telemetry":
                 st.warning(f"**Soil Moisture:**\n{farm['moisture']}% ({'Optimal' if farm['moisture'] >= 30 else 'Deficit'})")
                 st.warning(f"**Acreage:**\n{farm['acres']} Acres")
             with c3:
-                st.success(f"**Live Local Weather:**\n{temp}°C, {hum}% Humidity")
+                st.success(f"**Live Local Weather:**\n{temp} C, {hum}% Humidity")
                 st.success(f"**AWD Compliance:**\nVerified Compliant")
 
 # --- PAGE 2: AI IRRIGATION SCHEDULER ---
@@ -226,7 +203,7 @@ elif page == "AI Irrigation Scheduler":
         st.session_state.api_temp = int(t)
         st.session_state.api_hum = int(h)
         st.session_state.api_rain = int(r)
-        st.toast("Live Vellore Weather Synced!")
+        st.toast("Live Vellore Weather Synced")
     
     st.button("Auto-Fill Live Vellore Weather (Open-Meteo API)", on_click=fetch_api_data, width="stretch")
     st.write("")
@@ -242,7 +219,7 @@ elif page == "AI Irrigation Scheduler":
             
         with st.expander("Live Weather Data", expanded=True):
             c_temp, c_hum, c_rain = st.columns(3)
-            temp_in = c_temp.slider("Temp (°C)", 20, 45, key='api_temp')
+            temp_in = c_temp.slider("Temp (C)", 20, 45, key='api_temp')
             humidity_in = c_hum.slider("Humidity (%)", 20, 95, key='api_hum')
             rain_in = c_rain.slider("Rain (mm)", 0, 50, key='api_rain')
         
@@ -270,7 +247,7 @@ elif page == "AI Irrigation Scheduler":
             progress_pct = int((pred_water/flood_water)*100)
             
         st.progress(progress_pct, text=f"AI uses only {progress_pct}% of traditional flood water.")
-        st.success(f"**Monthly Power/Pumping Cost Saved:** ₹{int(water_saved * 30 * 0.012):,}")
+        st.success(f"**Monthly Power/Pumping Cost Saved:** INR {int(water_saved * 30 * 0.012):,}")
     
     st.divider()
     c_chart, c_explain = st.columns(2)
@@ -298,8 +275,8 @@ elif page == "Methane & Carbon Ledger":
     
     c1, c2, c3 = st.columns(3)
     c1.metric("Total Credits Minted", "1,314 tCO2e", "+200 this week")
-    c2.metric("Market Price per tCO2e", "₹1,530", "+₹45 vs last month")
-    c3.metric("Total Farmer Liquidity", "₹20,10,420", "Paid Out")
+    c2.metric("Market Price per tCO2e", "INR 1,530", "+ INR 45 vs last month")
+    c3.metric("Total Farmer Liquidity", "INR 20,10,420", "Paid Out")
     
     st.write("")
     st.markdown("### Verified FPO Carbon Credit Batches")
@@ -313,7 +290,7 @@ elif page == "Methane & Carbon Ledger":
         ledger_data,
         column_config={
             "Batch ID": st.column_config.TextColumn("Batch ID", width="small"),
-            "Value (INR)": st.column_config.NumberColumn("Payout Value", format="₹%d"),
+            "Value (INR)": st.column_config.NumberColumn("Payout Value", format="INR %d"),
             "Compliance": st.column_config.ProgressColumn("AWD Compliance %", format="%d%%", min_value=0, max_value=100),
             "Status": st.column_config.TextColumn("Status")
         },
@@ -351,11 +328,11 @@ elif page == "TAM/SAM & Business Model":
         st.markdown(f"""
         <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 25px; border-radius: 16px;">
             <h4 style="margin-top: 0; color: #94a3b8; font-size: 0.9rem; text-transform: uppercase;">Projected Annual Recurring Revenue (ARR)</h4>
-            <h1 style="color: #10b981; font-size: 3rem; margin: 10px 0;">₹{(total_arr)/100000:.2f} Lakhs/Yr</h1>
+            <h1 style="color: #10b981; font-size: 3rem; margin: 10px 0;">INR {(total_arr)/100000:.2f} Lakhs/Yr</h1>
             <hr style="border-color: rgba(255,255,255,0.1); margin: 15px 0;">
             <div style="display: flex; justify-content: space-between; font-size: 1.1rem;">
-                <span><b>SaaS Subscriptions:</b> ₹{saas_rev/100000:.2f}L</span>
-                <span><b>Carbon Commission:</b> ₹{carbon_rev/100000:.2f}L</span>
+                <span><b>SaaS Subscriptions:</b> INR {saas_rev/100000:.2f}L</span>
+                <span><b>Carbon Commission:</b> INR {carbon_rev/100000:.2f}L</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
