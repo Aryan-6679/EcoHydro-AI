@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
+import pydeck as pdk
 import requests
 from sklearn.ensemble import RandomForestRegressor
 
@@ -150,25 +151,53 @@ if page == "GIS Farm Telemetry":
     
     st.markdown("### Interactive Farm Map View")
     if not vellore_farms.empty:
-        # Fallback handling for Plotly Mapbox API changes
-        if hasattr(px, "scatter_map"):
-            fig_map = px.scatter_map(
-                vellore_farms, lat="lat", lon="lon", color="status", size="acres",
-                hover_name="name", hover_data=["fpo", "crop", "acres", "moisture"],
-                color_discrete_map={"Optimal": "#10b981", "Deficit": "#f59e0b", "Critical": "#ef4444"},
-                zoom=10, height=450
-            )
-            fig_map.update_layout(map_style="carto-darkmatter", margin={"r":0,"t":0,"l":0,"b":0})
-        else:
-            fig_map = px.scatter_mapbox(
-                vellore_farms, lat="lat", lon="lon", color="status", size="acres",
-                hover_name="name", hover_data=["fpo", "crop", "acres", "moisture"],
-                color_discrete_map={"Optimal": "#10b981", "Deficit": "#f59e0b", "Critical": "#ef4444"},
-                zoom=10, height=450
-            )
-            fig_map.update_layout(mapbox_style="carto-darkmatter", margin={"r":0,"t":0,"l":0,"b":0})
-            
-        st.plotly_chart(fig_map, width="stretch")
+        def get_color(status):
+            if status == "Optimal":
+                return [16, 185, 129, 220]
+            elif status == "Deficit":
+                return [245, 158, 11, 220]
+            else:
+                return [239, 68, 68, 220]
+
+        vellore_farms['color'] = vellore_farms['status'].apply(get_color)
+        vellore_farms['radius'] = vellore_farms['acres'] * 90
+        
+        layer = pdk.Layer(
+            "ScatterplotLayer",
+            data=vellore_farms,
+            get_position="[lon, lat]",
+            get_fill_color="color",
+            get_line_color=[255, 255, 255, 200],
+            line_width_min_pixels=2,
+            get_radius="radius",
+            pickable=True,
+            auto_highlight=True
+        )
+        
+        view_state = pdk.ViewState(
+            latitude=12.92,
+            longitude=79.10,
+            zoom=10,
+            pitch=25
+        )
+        
+        deck = pdk.Deck(
+            map_style="mapbox://styles/mapbox/dark-v10",
+            layers=[layer],
+            initial_view_state=view_state,
+            tooltip={
+                "html": "<b>{name}</b><br/>FPO: {fpo}<br/>Crop: {crop}<br/>Area: {acres} Acres<br/>Moisture: {moisture}% ({status})",
+                "style": {
+                    "backgroundColor": "#1e293b",
+                    "color": "#f8fafc",
+                    "borderRadius": "8px",
+                    "padding": "12px",
+                    "fontFamily": "Plus Jakarta Sans, sans-serif"
+                }
+            }
+        )
+        
+        st.pydeck_chart(deck, width="stretch")
         
         st.write("")
         st.markdown("### Selected Field Telemetry Breakout")
@@ -205,7 +234,7 @@ elif page == "AI Irrigation Scheduler":
         st.session_state.api_rain = int(r)
         st.toast("Live Vellore Weather Synced")
     
-    st.button("Auto-Fill Live Vellore Weather (Open-Meteo API)", on_click=fetch_api_data, width="stretch")
+    st.button("Auto-Fill Live Vellore Weather", on_click=fetch_api_data, width="stretch")
     st.write("")
     
     col_inputs, col_results = st.columns([1.2, 1])
@@ -226,7 +255,6 @@ elif page == "AI Irrigation Scheduler":
     with col_results:
         input_data = pd.DataFrame([{'N': nitrogen, 'P': 40, 'K': 30, 'Temp': temp_in, 'Humidity': humidity_in, 'pH': 6.8, 'Rainfall': rain_in, 'Soil_Moisture': soil_m}])
         
-        # Weather Override Logic
         if rain_in > 15:
             st.error("Heavy Rain Forecast: Postpone irrigation! Natural rainfall will replenish soil moisture.")
             pred_water = 0
@@ -336,3 +364,4 @@ elif page == "TAM/SAM & Business Model":
             </div>
         </div>
         """, unsafe_allow_html=True)
+```:app.py
