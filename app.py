@@ -262,13 +262,6 @@ def load_farm_data():
         labels=["Critical", "Deficit", "Optimal"]
     ).astype(str)
 
-    # CRITICAL FIX: Pre-render the entire tooltip string in Pandas.
-    # This bypasses all of PyDeck's HTML/Fullscreen string formatting bugs.
-    df['tooltip_text'] = df.apply(
-        lambda row: f"Farm: {row['name']}\nPartner: {row['fpo']}\nCrop: {row['crop']}\nArea: {row['acres']} Acres\nMoisture: {row['moisture']}% ({row['status']})", 
-        axis=1
-    )
-
     return df
 
 # Load data on refresh
@@ -349,19 +342,17 @@ if page == "GIS Farm Telemetry":
             bearing=-15
         )
         
-        # CRITICAL FIX: Use the pre-rendered string from Pandas with strict whitespace wrap
-        safe_tooltip = {
-            "text": "{tooltip_text}",
+        # CRITICAL FIX: Use native PyDeck HTML tooltips. 
+        # Setting zIndex to the 32-bit max guarantees it renders above the Streamlit fullscreen overlay.
+        deck_tooltip = {
+            "html": "<b>Farm:</b> {name}<br/><b>Partner:</b> {fpo}<br/><b>Crop:</b> {crop}<br/><b>Area:</b> {acres} Acres<br/><b>Moisture:</b> {moisture}% ({status})",
             "style": {
                 "backgroundColor": "#18181b",
                 "color": "#fafafa",
-                "border": "1px solid #27272a",
-                "fontFamily": "Inter, sans-serif",
-                "fontSize": "13px",
-                "padding": "12px",
+                "border": "1px solid #3f3f46",
                 "borderRadius": "6px",
-                "zIndex": 999999, # Push above fullscreen overlay
-                "whiteSpace": "pre-wrap" # Forcing newline parsing
+                "padding": "10px",
+                "zIndex": "2147483647"
             }
         }
         
@@ -370,7 +361,7 @@ if page == "GIS Farm Telemetry":
             map_style="dark", 
             layers=[scatter_layer, column_layer],
             initial_view_state=view_state,
-            tooltip=safe_tooltip
+            tooltip=deck_tooltip
         )
         
         # Deprecation fix: replace use_container_width=True with width="stretch"
