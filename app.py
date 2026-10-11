@@ -4,6 +4,8 @@ import numpy as np
 import plotly.express as px
 import requests
 from sklearn.ensemble import RandomForestRegressor
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
 # ==========================================
 # 1. PAGE CONFIGURATION & SETUP
@@ -34,7 +36,32 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. DATA LOADING & ML MODEL
+# 2. GOOGLE DRIVE / SHEETS INTEGRATION
+# ==========================================
+def log_to_google_drive(data_row):
+    """Pushes telemetry data directly to Google Drive (Sheets)"""
+    try:
+        # Define API scope
+        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+        
+        # Pull credentials safely from Streamlit Secrets
+        creds_dict = dict(st.secrets["gcp_service_account"])
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+        client = gspread.authorize(creds)
+        
+        # Open the specific Google Sheet
+        sheet = client.open("EcoHydro_Data_Logs").sheet1
+        
+        # Append the new row of data
+        sheet.append_row(data_row)
+        return True
+    except Exception as e:
+        # If it fails (e.g. no internet, bad keys), don't crash the app!
+        st.error(f"⚠️ Drive Sync Error (Check Secrets): {e}")
+        return False
+
+# ==========================================
+# 3. DATA LOADING & ML MODEL
 # ==========================================
 @st.cache_data
 def load_farm_data():
@@ -67,7 +94,6 @@ def train_ai_model():
         'pH': np.random.uniform(5.5, 8.5, n_samples),
         'Soil_Moisture': np.random.uniform(10, 80, n_samples)
     })
-    # Target variable generation (synthetic logic)
     y = np.clip((X['Temp']*200) + ((100-X['Humidity'])*50) - (X['Rainfall_Forecast']*25) - (X['Soil_Moisture']*80), 1000, 8000)
     
     model = RandomForestRegressor(n_estimators=50, random_state=42)
@@ -78,7 +104,7 @@ farm_data = load_farm_data()
 ai_model, feature_names = train_ai_model()
 
 # ==========================================
-# 3. SIDEBAR NAVIGATION & PITCH
+# 4. SIDEBAR NAVIGATION
 # ==========================================
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/1892/1892747.png", width=60)
@@ -92,33 +118,22 @@ with st.sidebar:
         "🍃 Methane & Carbon Ledger",
         "📈 TAM/SAM & Business Model"
     ])
-    
-    st.markdown("---")
-    if st.checkbox("🏆 Show Judge Pitch Highlights", value=True):
-        st.success("""
-        **💡 Judge Elevator Pitch (30 Sec):**  
-        EcoHydro AI by Team Skynet integrates real-time weather and 48-hour forecasting APIs to predict optimal irrigation schedules, saving 40% water while recursively self-improving with every feedback loop!
-        """)
 
 # ==========================================
-# 4. MAIN DASHBOARD VIEWS
+# 5. MAIN DASHBOARD VIEWS
 # ==========================================
 
 if view == "🌍 GIS Farm Telemetry":
     st.header("🌍 Precision GIS Telemetry")
-    st.markdown("Live multispectral soil moisture and crop status across onboarded Farmer Producer Organizations (FPOs).")
-    
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.markdown('<div class="metric-card"><div class="metric-label">Total Monitored Land</div><div class="metric-value">4,280 Acres</div><div style="color:#10b981; font-size:0.8rem;">↑ +12% this month</div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="metric-card"><div class="metric-label">Total Monitored Land</div><div class="metric-value">4,280 Acres</div></div>', unsafe_allow_html=True)
     with col2:
-        st.markdown('<div class="metric-card"><div class="metric-label">Freshwater Saved</div><div class="metric-value">18.4M Liters</div><div style="color:#10b981; font-size:0.8rem;">↑ 38.5% vs Flood</div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="metric-card"><div class="metric-label">Freshwater Saved</div><div class="metric-value">18.4M Liters</div></div>', unsafe_allow_html=True)
     with col3:
-        st.markdown('<div class="metric-card"><div class="metric-label">Verified CO2 Offsets</div><div class="metric-value">1,420 Tons</div><div style="color:#10b981; font-size:0.8rem;">↑ AWD Method</div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="metric-card"><div class="metric-label">Verified CO2 Offsets</div><div class="metric-value">1,420 Tons</div></div>', unsafe_allow_html=True)
     with col4:
-        st.markdown('<div class="metric-card"><div class="metric-label">Farmer Payout Pool</div><div class="metric-value">₹28.4 Lakh</div><div style="color:#10b981; font-size:0.8rem;">↑ 85% to Farmers</div></div>', unsafe_allow_html=True)
-    
-    st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown('<div class="metric-card"><div class="metric-label">Farmer Payout Pool</div><div class="metric-value">₹28.4 Lakh</div></div>', unsafe_allow_html=True)
     
     fig_map = px.scatter_mapbox(
         farm_data, lat="lat", lon="lon", color="status", size="acres",
@@ -131,9 +146,7 @@ if view == "🌍 GIS Farm Telemetry":
 
 elif view == "⚡ AI Irrigation Scheduler":
     st.header("⚡ AI Irrigation Scheduler & Live Weather Integration")
-    st.markdown("Combines current weather conditions and 48-hour precipitation forecasting with a self-improving Random Forest model.")
     
-    # Fetch Live Weather & Forecast from Open-Meteo API
     if 'live_temp' not in st.session_state:
         st.session_state['live_temp'] = 32.5
         st.session_state['live_hum'] = 65
@@ -141,17 +154,14 @@ elif view == "⚡ AI Irrigation Scheduler":
 
     if st.button("🌦️ Sync Live Vellore Weather & 48hr Forecast (Open-Meteo API)"):
         try:
-            # Open-Meteo API for Current Weather AND Daily Precipitation Forecast
             res = requests.get("https://api.open-meteo.com/v1/forecast?latitude=12.9165&longitude=79.1325&current=temperature_2m,relative_humidity_2m&daily=precipitation_sum&timezone=auto", timeout=5)
             data = res.json()
-            
             st.session_state['live_temp'] = float(data['current']['temperature_2m'])
             st.session_state['live_hum'] = int(data['current']['relative_humidity_2m'])
-            st.session_state['forecast_rain'] = float(data['daily']['precipitation_sum'][0]) # Forecasted rain for today/tomorrow
-            
-            st.success(f"✅ Successfully Synced: {st.session_state['live_temp']}°C | Humidity: {st.session_state['live_hum']}% | Expected Rain (24h): {st.session_state['forecast_rain']}mm")
+            st.session_state['forecast_rain'] = float(data['daily']['precipitation_sum'][0])
+            st.success("✅ Weather Synced Successfully!")
         except Exception as e:
-            st.warning("⚠️ API connection failed. Using fallback simulation weather values.")
+            st.warning("⚠️ API connection failed. Using fallback simulation values.")
 
     col1, col2, col3 = st.columns([1, 1, 2])
     with col1:
@@ -165,115 +175,66 @@ elif view == "⚡ AI Irrigation Scheduler":
         r_val = st.slider("48hr Weather Forecast Rain (mm)", 0.0, 50.0, float(st.session_state['forecast_rain']))
         sm_val = st.slider("Current Soil Moisture (%)", 0, 100, 35)
     
-    # Prediction
     input_df = pd.DataFrame([[n_val, p_val, k_val, t_val, h_val, r_val, ph_val, sm_val]], columns=feature_names)
     water_pred = ai_model.predict(input_df)[0]
     flood_water = water_pred * 1.65 
     
     with col3:
         st.subheader("AI Irrigation Action Plan")
-        
-        # 🚨 WEATHER FORECAST OVERRIDE LOGIC 🚨
         if r_val > 15.0:
             st.error(f"🌧️ **Heavy Rain Forecast ({r_val}mm):** Postpone irrigation! Natural rainfall will replenish soil moisture.")
-            water_pred = 0.0 # Override AI prediction because nature will do the work
+            water_pred = 0.0 
         else:
             st.info(f"💧 **Optimal Drip Irrigation:** {int(water_pred)} Liters/Acre recommended today.")
             
         st.warning(f"🌊 **Traditional Flood Irrigation:** {int(flood_water)} Liters/Acre today.")
         st.success(f"📈 **Freshwater Saved:** {int(flood_water - water_pred)} Liters/Acre")
-        
-        # 7-Day Projection Chart
-        days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-        drip_proj = [water_pred + np.random.randint(-200, 200) for _ in range(7)]
-        flood_proj = [f * 1.65 for f in drip_proj]
-        
-        proj_df = pd.DataFrame({'Day': days, 'AI Drip': drip_proj, 'Flood': flood_proj})
-        fig_proj = px.bar(proj_df, x='Day', y=['Flood', 'AI Drip'], barmode='group', title="Weather-Adjusted 7-Day Water Projection")
-        fig_proj.update_layout(
-            legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5),
-            xaxis_title=None,
-            legend_title_text=None,
-            margin=dict(b=50)
-        )
-        st.plotly_chart(fig_proj, use_container_width=True)
 
     # ==========================================
-    # RECURSIVE SELF-IMPROVEMENT (ACTIVE LEARNING) MODULE
+    # RECURSIVE LEARNING + CLOUD DATA ACCUMULATION
     # ==========================================
     st.markdown("---")
-    st.subheader("🧬 Recursive Self-Improvement Engine (Active Learning)")
-    st.caption("Submit actual field telemetry or harvest feedback to dynamically retrain model weights on the fly.")
+    st.subheader("🧬 Recursive Learning & Cloud Data Accumulation")
+    st.caption("Submit field feedback. This retrains the model dynamically AND securely archives the telemetry in Google Drive.")
 
     with st.form("feedback_form"):
         col_f1, col_f2 = st.columns(2)
         with col_f1:
             actual_water_used = st.number_input("Actual Water Used (Liters/Acre)", min_value=0.0, max_value=10000.0, value=float(water_pred))
-            crop_yield_score = st.slider("Observed Crop Health / Yield Score (1-10)", 1, 10, 8)
         with col_f2:
             feedback_notes = st.selectbox("Field Performance Feedback", [
-                "Optimal Growth (AI Recommendation Accurate)", 
-                "Slight Moisture Stress (AI Underestimated Water)", 
-                "Slight Over-saturation (AI Overestimated Water)"
+                "Optimal Growth", "Slight Moisture Stress", "Slight Over-saturation"
             ])
         
-        submit_feedback = st.form_submit_button("🔄 Retrain AI Model with this Feedback")
+        submit_feedback = st.form_submit_button("🔄 Retrain AI & Sync to Google Drive")
 
         if submit_feedback:
-            adjustment_factor = 1.0
-            if "Underestimated" in feedback_notes:
-                adjustment_factor = 1.15
-            elif "Overestimated" in feedback_notes:
-                adjustment_factor = 0.85
+            # 1. Retrain local AI Model
+            adjustment = 1.15 if "Stress" in feedback_notes else (0.85 if "Over-saturation" in feedback_notes else 1.0)
+            ai_model.fit(input_df, pd.Series([actual_water_used * adjustment]))
             
-            new_X = pd.DataFrame([[n_val, p_val, k_val, t_val, h_val, r_val, ph_val, sm_val]], columns=feature_names)
-            new_y = pd.Series([actual_water_used * adjustment_factor])
-
-            # Dynamically retrain the model instance live!
-            ai_model.fit(new_X, new_y)
+            # 2. Log "Tonnes of Data" to Google Drive 
+            data_row = [n_val, p_val, k_val, t_val, h_val, r_val, sm_val, float(water_pred), actual_water_used, feedback_notes]
+            success = log_to_google_drive(data_row)
             
-            st.success("🎉 **Self-Improvement Loop Triggered Successfully!** Model weights updated recursively based on live field feedback.")
-            st.balloons()
+            if success:
+                st.success("🎉 **Data Accumulated!** AI model retrained locally AND telemetry successfully archived to Google Drive database.")
+                st.balloons()
 
 elif view == "🍃 Methane & Carbon Ledger":
     st.header("🍃 Verified Carbon Credit Ledger")
-    st.markdown("Calculates greenhouse gas reductions by shifting from continuous flooding to Alternate Wetting and Drying (AWD) irrigation.")
-    
     ledger_data = pd.DataFrame({
         "FPO / Cooperative": ["Katpadi FPO", "Kaniyambadi FPO", "Anaicut FPO", "Gudiyatham FPO"],
         "Acreage Under AWD": [1200, 850, 400, 1500],
         "Methane Prevented (kg)": [14400, 10200, 4800, 18000],
         "CO2e Offset (Tons)": [403.2, 285.6, 134.4, 504.0],
-        "Tradable Carbon Credits": [403, 285, 134, 504],
         "Estimated Payout (INR)": ["₹8,06,000", "₹5,70,000", "₹2,68,000", "₹10,08,000"]
     })
-    
     st.dataframe(ledger_data, use_container_width=True)
-    
-    csv = ledger_data.to_csv(index=False).encode('utf-8')
-    st.download_button(
-        label="📥 Download Audit Ready Ledger (CSV)",
-        data=csv,
-        file_name='carbon_ledger_audit.csv',
-        mime='text/csv',
-    )
 
 elif view == "📈 TAM/SAM & Business Model":
-    st.header("📈 Market Sizing & Revenue Model - Team Skynet")
-    
+    st.header("📈 Market Sizing & Revenue Model")
     col1, col2, col3 = st.columns(3)
-    col1.metric("TAM (Total Addressable Market)", "$14 Billion", "Global Agritech")
-    col2.metric("SAM (Serviceable Market)", "$2.1 Billion", "India Precision Farming")
-    col3.metric("SOM (Serviceable Obtainable)", "$150 Million", "South India FPOs")
-    
-    st.markdown("""
-    ### 💰 How We Make Money (B2B2C)
-    1. **SaaS Subscription for FPOs:** ₹5,000/month per Farmer Producer Organization for dashboard access.
-    2. **Carbon Credit Brokerage:** We take a 15% commission on all corporate carbon credits sold through our MRV ledger.
-    3. **Corporate ESG API:** Selling verified water-savings data to agricultural corporates to meet their sustainability compliance goals.
-    
-    ### 🚀 Go-To-Market Strategy
-    * **Phase 1 (Months 1-6):** Pilot with 5 FPOs in Vellore district (Zero cost to farmers).
-    * **Phase 2 (Months 6-12):** Register initial water-savings on the Gold Standard Carbon Registry.
-    * **Phase 3 (Year 2+):** Scale pan-India using open satellite integrations.
-    """)
+    col1.metric("TAM (Global)", "$14 Billion")
+    col2.metric("SAM (India)", "$2.1 Billion")
+    col3.metric("SOM (South India)", "$150 Million")
