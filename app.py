@@ -110,6 +110,7 @@ st.markdown("""
         background: rgba(30, 30, 35, 0.6);
         border-color: rgba(255, 255, 255, 0.2);
     }
+    
     .hud-label {
         font-size: 0.75rem;
         color: #a1a1aa;
@@ -163,7 +164,6 @@ st.markdown("""
     }
     hr { border-color: rgba(255, 255, 255, 0.08) !important; margin: 2rem 0; }
     
-    /* Custom Scrollbar */
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: #09090b; }
     ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 4px; }
@@ -303,6 +303,50 @@ def load_farm_data():
     df['name'] = [enhance_name(x, i) for i, x in enumerate(df['name'])]
 
     df['name'] = df['name'].astype(str)
+    df['fpo'] = df['fpo'].astype(str)
+    df['crop'] = df['crop'].astype(str)
+    df['acres'] = pd.to_numeric(df['acres'], errors='coerce').fillna(10.0).round(1)
+    df['moisture'] = pd.to_numeric(df['moisture'], errors='coerce').fillna(45.0).round(1)
+    df['lat'] = pd.to_numeric(df['lat'], errors='coerce').fillna(12.92)
+    df['lon'] = pd.to_numeric(df['lon'], errors='coerce').fillna(79.10)
+
+    df['status'] = pd.cut(
+        df['moisture'], 
+        bins=[-np.inf, 25, 45, np.inf], 
+        labels=["Critical", "Deficit", "Optimal"]
+    ).astype(str)
+
+    return df
+
+vellore_farms = load_farm_data()
+
+with st.sidebar:
+    st.markdown("<h2 style='color: #fafafa; font-weight: 700; margin-bottom: 0; letter-spacing: -0.05em;'>EcoHydro AI</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #a1a1aa; font-size: 0.75rem; margin-top: 0; margin-bottom: 24px; font-weight: 600; letter-spacing: 0.05em;'>PRECISION AGRICULTURE OS</p>", unsafe_allow_html=True)
+    
+    page = st.radio("WORKSPACE", [
+        "GIS Farm Telemetry",
+        "AI Irrigation Scheduler",
+        "Methane & Carbon Ledger",
+        "TAM/SAM & Business Model",
+    ], label_visibility="collapsed")
+    
+    # Intentionally removed the "All Sensors Online" mockup block based on previous feedback.
+    st.write("")
+    st.write("")
+
+if page == "GIS Farm Telemetry":
+    st.markdown("<div class='main-header'>GIS Farm Telemetry</div>", unsafe_allow_html=True)
+    
+    col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+    col_m1.metric("Total Monitored", "4,280 Acres", "+12% vs last month")
+    col_m2.metric("Freshwater Saved", "18.4M Liters", "38.5% efficiency")
+    col_m3.metric("Verified Offsets", "1,420 tCO2e", "AWD Protocol")
+    col_m4.metric("Payout Pool", "INR 28.4L", "85% Yield")
+    
+    st.write("")
+    
+    if not vellore_farms.empty:
         # Use lambda mapping to prevent Pandas crashing on assigning lists to NaN values
         color_map = {
             "Optimal": [16, 185, 129, 230],     # Emerald
@@ -311,17 +355,17 @@ def load_farm_data():
         }
         vellore_farms['color'] = vellore_farms['status'].apply(lambda x: color_map.get(x, [16, 185, 129, 230]))
         
-        # Base Scatter Layer (Glow effect)
         scatter_layer = pdk.Layer(
             "ScatterplotLayer",
-            id="farm_points",            data=vellore_farms,
+            id="farm_points",       # Added explicit ID for reliable selection lookup
+            data=vellore_farms,
             get_position="[lon, lat]",
             get_fill_color="color",
             get_radius="acres * 150", 
-            pickable=True,            opacity=0.4
+            pickable=True,          # Must be True to register clicks/hovers
+            opacity=0.4
         )
         
-        # 3D Column Layer
         column_layer = pdk.Layer(
             "ColumnLayer",
             data=vellore_farms,
@@ -343,6 +387,7 @@ def load_farm_data():
             bearing=-15
         )
         
+        # Keep tooltips so hover works, but selection drives the main side panel
         deck_tooltip = {
             "html": "<b style='color: #10b981;'>{name}</b><br/><span style='font-size: 0.8rem; color: #a1a1aa;'>Click marker to sync side panel</span>",
             "style": {
@@ -363,7 +408,6 @@ def load_farm_data():
             tooltip=deck_tooltip
         )
         
-        # Create a 2-column layout: Map on the left (wider), Drop Box & Details on the right
         col_map, col_details = st.columns([2.5, 1], gap="large")
         
         with col_map:
@@ -374,6 +418,7 @@ def load_farm_data():
                 </div>
             """, unsafe_allow_html=True)
             
+            # Using st.pydeck_chart with on_select triggers a rerun when a user clicks a marker
             map_event = st.pydeck_chart(
                 deck, 
                 width="stretch", 
@@ -387,14 +432,17 @@ def load_farm_data():
             
             if len(farm_names) > 0:
                 clicked_farm_name = None
+                
                 if hasattr(map_event, 'selection') and map_event.selection:
                     try:
                         selection_dict = map_event.selection
+                        # Extract the selected record from the scatter layer
                         if "farm_points" in selection_dict and len(selection_dict["farm_points"]) > 0:
                             clicked_farm_name = selection_dict["farm_points"][0].get("name")
                     except Exception:
                         pass
                 
+                # Default index logic handles keeping the dropdown synced with the map click
                 default_index = 0
                 if clicked_farm_name in farm_names:
                     default_index = farm_names.index(clicked_farm_name)
