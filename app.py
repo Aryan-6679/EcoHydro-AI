@@ -7,6 +7,11 @@ import requests
 import re
 from sklearn.ensemble import RandomForestRegressor
 
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+from datetime import datetime
+import os
+
 # --- PAGE CONFIGURATION & PREMIUM UI ---
 st.set_page_config(
     page_title="EcoHydro AI | Precision Agriculture OS",
@@ -197,6 +202,32 @@ def get_live_weather(lat, lon):
     except Exception:
         pass
     return 32.5, 65.0, 0.0
+
+def log_to_google_drive(payload):
+    """
+    Appends a row of telemetry and interaction data to a Google Sheet.
+    Requires a 'gcp_credentials.json' file with Service Account keys.
+    """
+    scope = [
+        "https://spreadsheets.google.com/feeds", 
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive.file", 
+        "https://www.googleapis.com/auth/drive"
+    ]
+    try:
+        if os.path.exists("gcp_credentials.json"):
+            creds = ServiceAccountCredentials.from_json_keyfile_name("gcp_credentials.json", scope)
+            client = gspread.authorize(creds)
+            
+            # Note: Ensure a sheet named 'EcoHydro_AI_Training_Data' exists and is shared with your service account email
+            sheet = client.open("EcoHydro_AI_Training_Data").sheet1 
+            sheet.append_row(payload)
+            return True, "Data successfully synced to Google Sheets!"
+        else:
+            # Simulated success for demonstration if keys are missing
+            return True, "✅ [Simulation Mode] Telemetry uploaded to cloud! (Add 'gcp_credentials.json' to enable actual Google Drive integration)"
+    except Exception as e:
+        return False, f"Failed to sync to Google Drive: {str(e)}"
 
 def load_farm_data():
     df = pd.DataFrame()
@@ -480,6 +511,29 @@ elif page == "AI Irrigation Scheduler":
             <div style="font-size: 2.2rem; font-weight: 700; color: #10b981; margin-top: 4px;">INR {int(water_saved * 30 * 0.012):,}</div>
         </div>
         """, unsafe_allow_html=True)
+        
+        st.write("")
+        st.markdown("### ☁️ AI Continuous Learning")
+        st.markdown("<p style='font-size: 0.85rem; color: #a1a1aa; margin-bottom: 16px;'>Upload interaction parameters and simulated satellite NDVI telemetry to the centralized Google Drive ledger to improve our foundational models.</p>", unsafe_allow_html=True)
+        
+        if st.button("🚀 Sync Telemetry & Feedback to Google Drive", use_container_width=True):
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            # Simulate a satellite NDVI (Vegetation Index) based on soil moisture and crop type logic
+            satellite_ndvi = round(np.clip((soil_m / 100) + np.random.uniform(0.1, 0.3), 0, 1), 2)
+            
+            # Prepare row data for Google Sheets
+            payload = [
+                timestamp, crop_type, acres, soil_m, nitrogen, 
+                temp_in, humidity_in, rain_in, int(pred_water), satellite_ndvi
+            ]
+            
+            with st.spinner("Encrypting and syncing to Google Drive..."):
+                success, msg = log_to_google_drive(payload)
+                
+            if success:
+                st.success(msg)
+            else:
+                st.error(msg)
     
     st.divider()
     
