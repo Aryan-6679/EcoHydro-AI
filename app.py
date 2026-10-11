@@ -135,11 +135,11 @@ if view == "🌍 GIS Farm Telemetry":
     with col4:
         st.markdown('<div class="metric-card"><div class="metric-label">Farmer Payout Pool</div><div class="metric-value">₹28.4 Lakh</div></div>', unsafe_allow_html=True)
     
-    fig_map = px.scatter_mapbox(
+    fig_map = px.scatter_map(
         farm_data, lat="lat", lon="lon", color="status", size="acres",
         hover_name="name", hover_data=["crop", "acres", "moisture"],
         color_discrete_map={"Optimal": "#10b981", "Deficit": "#f59e0b", "Critical": "#ef4444"},
-        zoom=10, center={"lat": 12.9165, "lon": 79.1325}, mapbox_style="carto-positron"
+        zoom=10, center={"lat": 12.9165, "lon": 79.1325}, map_style="carto-positron"
     )
     fig_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, height=500)
     st.plotly_chart(fig_map, use_container_width=True)
