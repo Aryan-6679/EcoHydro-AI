@@ -435,11 +435,16 @@ if page == "GIS Farm Telemetry":
                 
                 if hasattr(map_event, 'selection') and map_event.selection:
                     try:
-                        selection_dict = map_event.selection
-                        # Extract the selected record from the scatter layer
-                        if "farm_points" in selection_dict and len(selection_dict["farm_points"]) > 0:
-                            clicked_farm_name = selection_dict["farm_points"][0].get("name")
-                    except Exception:
+                        # Extract the selected record using Streamlit's selection schema (.objects[layer_id])
+                        selection_objects = getattr(map_event.selection, "objects", {})
+                        
+                        # Fallback for dictionary notation just in case
+                        if not selection_objects and isinstance(map_event.selection, dict):
+                            selection_objects = map_event.selection.get("objects", {})
+                            
+                        if "farm_points" in selection_objects and len(selection_objects["farm_points"]) > 0:
+                            clicked_farm_name = selection_objects["farm_points"][0].get("name")
+                    except Exception as e:
                         pass
                 
                 # Default index logic handles keeping the dropdown synced with the map click
