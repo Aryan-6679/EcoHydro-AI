@@ -357,20 +357,16 @@ if page == "GIS Farm Telemetry":
             bearing=-15
         )
         
-        # FULLSCREEN BULLETPROOF TOOLTIP:
-        # We put the sizing in the HTML div so PyDeck's internal engine can calculate edge-collisions and auto-flip!
+        # FOOLPROOF NATIVE TOOLTIP:
+        # We strip ALL custom CSS sizing, padding, and inner divs. 
+        # This allows PyDeck's internal Javascript to perfectly calculate the physical bounding box,
+        # ensuring it correctly auto-flips away from the edges of the screen/iframe without clipping.
         deck_tooltip = {
-            "html": "<div style='width: 180px; white-space: normal; font-size: 13px; line-height: 1.5;'><b style='color: #10b981; font-size: 14px;'>{name}</b><hr style='margin: 6px 0; border-color: #3f3f46;'/><span style='color: #a1a1aa;'>Partner:</span> <b>{fpo}</b><br/><span style='color: #a1a1aa;'>Crop:</span> <b>{crop}</b><br/><span style='color: #a1a1aa;'>Area:</span> <b>{acres} Acres</b><br/><span style='color: #a1a1aa;'>Moisture:</span> <b>{moisture}% ({status})</b></div>",
+            "html": "<b style='color: #10b981;'>{name}</b><br/>Partner: {fpo}<br/>Crop: {crop}<br/>Area: {acres} Acres<br/>Moisture: {moisture}% ({status})",
             "style": {
                 "backgroundColor": "#18181b",
                 "color": "#fafafa",
-                "border": "1px solid #3f3f46",
-                "borderRadius": "6px",
-                "padding": "12px",
-                "boxShadow": "0 8px 16px rgba(0, 0, 0, 0.6)",
-                "zIndex": "2147483647",
-                "fontFamily": "'Inter', sans-serif",
-                "pointerEvents": "none"
+                "zIndex": "2147483647"
             }
         }
         
