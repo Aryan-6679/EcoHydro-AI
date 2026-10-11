@@ -108,7 +108,6 @@ def load_and_train_models():
 model, dataset, feature_importance = load_and_train_models()
 
 def get_live_weather(lat, lon):
-    """Fetches live weather data from Open-Meteo API."""
     try:
         url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,precipitation&timezone=auto"
         response = requests.get(url, timeout=5)
@@ -120,17 +119,26 @@ def get_live_weather(lat, lon):
     return 32.5, 65.0, 0.0
 
 def load_farm_data():
-    """Load from CSV, or generate realistic fallback data if CSV is missing."""
+    """Robustly load and sanitize farm data to prevent PyDeck tooltip crashes."""
     df = pd.DataFrame()
     try:
         df = pd.read_csv("vellore_farm_data.csv")
-        df.columns = df.columns.str.strip().str.lower()
-        if 'area' in df.columns and 'acres' not in df.columns:
-            df['acres'] = df['area']
+        # Normalize column names to lowercase and strip whitespace
+        df.columns = df.columns.astype(str).str.strip().str.lower()
+        
+        # Handle possible alternate column names from the CSV
+        col_mapping = {
+            'farm': 'name', 'farm name': 'name', 'farm_name': 'name', 'id': 'name',
+            'area': 'acres', 'area (acres)': 'acres', 'size': 'acres',
+            'soil moisture': 'moisture', 'soil_moisture': 'moisture', 'humidity': 'moisture',
+            'fpo name': 'fpo', 'organization': 'fpo', 'cluster': 'fpo'
+        }
+        df.rename(columns=col_mapping, inplace=True)
+        
     except FileNotFoundError:
         pass
     
-    # Generate fallback if CSV failed or is empty
+    # Generate beautiful 3D fallback data if CSV is empty or missing
     if df.empty:
         np.random.seed(42)
         num_farms = 25
@@ -146,17 +154,23 @@ def load_farm_data():
             "crop": np.random.choice(["Paddy Rice", "Sugarcane", "Groundnut"], num_farms)
         })
         
+    # GUARANTEE all required columns exist so PyDeck tooltips NEVER crash
     if 'name' not in df.columns: df['name'] = [f"Farm-0{i+1}" for i in range(len(df))]
     if 'fpo' not in df.columns: df['fpo'] = "Vellore Agri Hub"
     if 'crop' not in df.columns: df['crop'] = "Mixed Crop"
     if 'acres' not in df.columns: df['acres'] = 10.0
     if 'moisture' not in df.columns: df['moisture'] = 45.0
+    if 'lat' not in df.columns: df['lat'] = 12.92
+    if 'lon' not in df.columns: df['lon'] = 79.10
     
-    df['name'] = df['name'].astype(str).fillna('Unknown')
-    df['fpo'] = df['fpo'].astype(str).fillna('Unknown')
-    df['crop'] = df['crop'].astype(str).fillna('Unknown')
+    # Cast to exact data types. If a value is NaN, replace it with a string/float so the PyDeck template parser doesn't break
+    df['name'] = df['name'].fillna('Unknown Farm').astype(str)
+    df['fpo'] = df['fpo'].fillna('Unknown FPO').astype(str)
+    df['crop'] = df['crop'].fillna('Unknown Crop').astype(str)
     df['acres'] = pd.to_numeric(df['acres'], errors='coerce').fillna(10.0).round(1)
     df['moisture'] = pd.to_numeric(df['moisture'], errors='coerce').fillna(45.0).round(1)
+    df['lat'] = pd.to_numeric(df['lat'], errors='coerce').fillna(12.92)
+    df['lon'] = pd.to_numeric(df['lon'], errors='coerce').fillna(79.10)
     
     return df
 
@@ -197,7 +211,6 @@ if page == "GIS Farm Telemetry":
     col_m4.metric("Farmer Payout Pool", "INR 28.4 Lakhs", "85% to Farmers")
     
     if not vellore_farms.empty:
-        # Define colors for specific status types
         color_map = {
             "Optimal": [16, 185, 129, 255],     # Green
             "Deficit": [245, 158, 11, 255],     # Yellow/Orange
@@ -239,35 +252,36 @@ if page == "GIS Farm Telemetry":
             bearing=-15
         )
         
+        # PREMIUM HOVER TOOLTIP HTML
         tooltip_html = (
-            "<table style='color: #f8fafc; font-family: sans-serif; font-size: 13px; border-spacing: 4px; border-collapse: separate;'>"
-            "<tr><td><b>Farm:</b></td><td style='padding-left: 8px;'>{name}</td></tr>"
-            "<tr><td><b>FPO:</b></td><td style='padding-left: 8px;'>{fpo}</td></tr>"
-            "<tr><td><b>Crop:</b></td><td style='padding-left: 8px;'>{crop}</td></tr>"
-            "<tr><td><b>Area:</b></td><td style='padding-left: 8px;'>{acres} Acres</td></tr>"
-            "<tr><td><b>Moisture:</b></td><td style='padding-left: 8px;'>{moisture}% ({status})</td></tr>"
+            "<div style='min-width: 240px;'>"
+            "<b style='font-size: 16px; color: #10b981; margin-bottom: 8px; display: block;'>{name}</b>"
+            "<table style='width: 100%; border-collapse: collapse; font-family: sans-serif; font-size: 13px; color: #f8fafc;'>"
+            "<tr><td style='padding: 4px 0; border-bottom: 1px solid #1e293b;'><b>FPO Partner</b></td><td style='text-align: right; padding: 4px 0; border-bottom: 1px solid #1e293b;'>{fpo}</td></tr>"
+            "<tr><td style='padding: 4px 0; border-bottom: 1px solid #1e293b;'><b>Harvest Crop</b></td><td style='text-align: right; padding: 4px 0; border-bottom: 1px solid #1e293b;'>{crop}</td></tr>"
+            "<tr><td style='padding: 4px 0; border-bottom: 1px solid #1e293b;'><b>Field Area</b></td><td style='text-align: right; padding: 4px 0; border-bottom: 1px solid #1e293b;'>{acres} Acres</td></tr>"
+            "<tr><td style='padding: 4px 0; color: #fbbf24;'><b>Soil Moisture</b></td><td style='text-align: right; padding: 4px 0; color: #fbbf24;'><b>{moisture}% ({status})</b></td></tr>"
             "</table>"
+            "</div>"
         )
-        
-        tooltip_config = {
-            "html": tooltip_html,
-            "style": {
-                "backgroundColor": "#0f172a",
-                "border": "1px solid #10b981",
-                "borderRadius": "8px",
-                "padding": "12px",
-                "boxShadow": "0 10px 25px rgba(0,0,0,0.5)",
-                "minWidth": "240px",
-                "whiteSpace": "nowrap"
-            }
-        }
         
         deck = pdk.Deck(
             map_provider="carto",
             map_style="dark", 
             layers=[scatter_layer, column_layer],
             initial_view_state=view_state,
-            tooltip=tooltip_config
+            tooltip={
+                "html": tooltip_html,
+                "style": {
+                    "backgroundColor": "#0f172a",
+                    "border": "1px solid #10b981",
+                    "borderRadius": "10px",
+                    "padding": "16px",
+                    "boxShadow": "0 10px 30px rgba(0,0,0,0.6)",
+                    "whiteSpace": "nowrap",
+                    "zIndex": "9999"
+                }
+            }
         )
         
         st.pydeck_chart(deck, width="stretch")
