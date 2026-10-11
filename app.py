@@ -1,4 +1,3 @@
-```python
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -278,4 +277,3 @@ elif view == "📈 TAM/SAM & Business Model":
     * **Phase 2 (Months 6-12):** Register initial water-savings on the Gold Standard Carbon Registry.
     * **Phase 3 (Year 2+):** Scale pan-India using open satellite integrations.
     """)
-```
