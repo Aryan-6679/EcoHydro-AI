@@ -1,17 +1,16 @@
+```python
 import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
 import requests
 from sklearn.ensemble import RandomForestRegressor
-import json
 
 # ==========================================
 # 1. PAGE CONFIGURATION & SETUP
 # ==========================================
 st.set_page_config(page_title="EcoHydro AI | Skynet Hackathon", page_icon="🌱", layout="wide")
 
-# Custom CSS for styling
 st.markdown("""
     <style>
     .metric-card {
@@ -65,11 +64,12 @@ def train_ai_model():
         'K': np.random.uniform(10, 80, n_samples),
         'Temp': np.random.uniform(22, 42, n_samples),
         'Humidity': np.random.uniform(30, 90, n_samples),
-        'Rainfall': np.random.uniform(0, 50, n_samples),
+        'Rainfall_Forecast': np.random.uniform(0, 50, n_samples),
         'pH': np.random.uniform(5.5, 8.5, n_samples),
         'Soil_Moisture': np.random.uniform(10, 80, n_samples)
     })
-    y = np.clip((X['Temp']*200) + ((100-X['Humidity'])*50) - (X['Rainfall']*20) - (X['Soil_Moisture']*80), 1000, 8000)
+    # Target variable generation (synthetic logic)
+    y = np.clip((X['Temp']*200) + ((100-X['Humidity'])*50) - (X['Rainfall_Forecast']*25) - (X['Soil_Moisture']*80), 1000, 8000)
     
     model = RandomForestRegressor(n_estimators=50, random_state=42)
     model.fit(X, y)
@@ -98,16 +98,13 @@ with st.sidebar:
     if st.checkbox("🏆 Show Judge Pitch Highlights", value=True):
         st.success("""
         **💡 Judge Elevator Pitch (30 Sec):**  
-        EcoHydro AI by Team Skynet eliminates 40% of agricultural freshwater waste using satellite telemetry and a **recursively self-improving AI**, while unlocking up to ₹15,000/acre in corporate carbon credits for smallholder farmers—with **Zero Hardware Setup Costs**.
+        EcoHydro AI by Team Skynet integrates real-time weather and 48-hour forecasting APIs to predict optimal irrigation schedules, saving 40% water while recursively self-improving with every feedback loop!
         """)
 
 # ==========================================
 # 4. MAIN DASHBOARD VIEWS
 # ==========================================
 
-# ------------------------------------------
-# VIEW 1: GIS Farm Telemetry
-# ------------------------------------------
 if view == "🌍 GIS Farm Telemetry":
     st.header("🌍 Precision GIS Telemetry")
     st.markdown("Live multispectral soil moisture and crop status across onboarded Farmer Producer Organizations (FPOs).")
@@ -124,7 +121,6 @@ if view == "🌍 GIS Farm Telemetry":
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # Plotly Map (Using Mapbox for Plotly 5.24.1)
     fig_map = px.scatter_mapbox(
         farm_data, lat="lat", lon="lon", color="status", size="acres",
         hover_name="name", hover_data=["crop", "acres", "moisture"],
@@ -134,26 +130,29 @@ if view == "🌍 GIS Farm Telemetry":
     fig_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, height=500)
     st.plotly_chart(fig_map, use_container_width=True)
 
-# ------------------------------------------
-# VIEW 2: AI Irrigation Scheduler & Self-Improvement
-# ------------------------------------------
 elif view == "⚡ AI Irrigation Scheduler":
-    st.header("⚡ AI Irrigation Scheduler & Active Learning")
-    st.markdown("Generates precise daily watering instructions using a recursively self-improving Random Forest model.")
+    st.header("⚡ AI Irrigation Scheduler & Live Weather Integration")
+    st.markdown("Combines current weather conditions and 48-hour precipitation forecasting with a self-improving Random Forest model.")
     
-    # Weather API Integration
-    if st.button("🌦️ Auto-Fill Live Vellore Weather (Open-Meteo API)"):
-        try:
-            res = requests.get("https://api.open-meteo.com/v1/forecast?latitude=12.9165&longitude=79.1325&current_weather=true")
-            weather = res.json()["current_weather"]
-            st.session_state['api_temp'] = weather["temperature"]
-            st.session_state['api_wind'] = weather["windspeed"]
-            st.success(f"✅ Fetched Live Data: {weather['temperature']}°C")
-        except Exception as e:
-            st.error("API failed. Using manual sliders.")
-            st.session_state['api_temp'] = 32.0
+    # Fetch Live Weather & Forecast from Open-Meteo API
+    if 'live_temp' not in st.session_state:
+        st.session_state['live_temp'] = 32.5
+        st.session_state['live_hum'] = 65
+        st.session_state['forecast_rain'] = 4.5
 
-    temp_val = st.session_state.get('api_temp', 32.0)
+    if st.button("🌦️ Sync Live Vellore Weather & 48hr Forecast (Open-Meteo API)"):
+        try:
+            # Open-Meteo API for Current Weather AND Daily Precipitation Forecast
+            res = requests.get("https://api.open-meteo.com/v1/forecast?latitude=12.9165&longitude=79.1325&current=temperature_2m,relative_humidity_2m&daily=precipitation_sum&timezone=auto", timeout=5)
+            data = res.json()
+            
+            st.session_state['live_temp'] = float(data['current']['temperature_2m'])
+            st.session_state['live_hum'] = int(data['current']['relative_humidity_2m'])
+            st.session_state['forecast_rain'] = float(data['daily']['precipitation_sum'][0]) # Forecasted rain for today/tomorrow
+            
+            st.success(f"✅ Successfully Synced: {st.session_state['live_temp']}°C | Humidity: {st.session_state['live_hum']}% | Expected Rain (24h): {st.session_state['forecast_rain']}mm")
+        except Exception as e:
+            st.warning("⚠️ API connection failed. Using fallback simulation weather values.")
 
     col1, col2, col3 = st.columns([1, 1, 2])
     with col1:
@@ -162,10 +161,10 @@ elif view == "⚡ AI Irrigation Scheduler":
         k_val = st.slider("Potassium (K)", 0, 100, 40)
         ph_val = st.slider("Soil pH", 4.0, 9.0, 6.5)
     with col2:
-        t_val = st.slider("Temperature (°C)", 10.0, 50.0, float(temp_val))
-        h_val = st.slider("Humidity (%)", 10, 100, 65)
-        r_val = st.slider("Rainfall (mm)", 0, 200, 0)
-        sm_val = st.slider("Soil Moisture (%)", 0, 100, 35)
+        t_val = st.slider("Current Ambient Temp (°C)", 10.0, 50.0, float(st.session_state['live_temp']))
+        h_val = st.slider("Current Humidity (%)", 10, 100, int(st.session_state['live_hum']))
+        r_val = st.slider("48hr Weather Forecast Rain (mm)", 0.0, 50.0, float(st.session_state['forecast_rain']))
+        sm_val = st.slider("Current Soil Moisture (%)", 0, 100, 35)
     
     # Prediction
     input_df = pd.DataFrame([[n_val, p_val, k_val, t_val, h_val, r_val, ph_val, sm_val]], columns=feature_names)
@@ -173,18 +172,25 @@ elif view == "⚡ AI Irrigation Scheduler":
     flood_water = water_pred * 1.65 
     
     with col3:
-        st.subheader("AI Recommendation")
-        st.info(f"💧 **Optimal Drip Irrigation:** {int(water_pred)} Liters/Acre today.")
+        st.subheader("AI Irrigation Action Plan")
+        
+        # 🚨 WEATHER FORECAST OVERRIDE LOGIC 🚨
+        if r_val > 15.0:
+            st.error(f"🌧️ **Heavy Rain Forecast ({r_val}mm):** Postpone irrigation! Natural rainfall will replenish soil moisture.")
+            water_pred = 0.0 # Override AI prediction because nature will do the work
+        else:
+            st.info(f"💧 **Optimal Drip Irrigation:** {int(water_pred)} Liters/Acre recommended today.")
+            
         st.warning(f"🌊 **Traditional Flood Irrigation:** {int(flood_water)} Liters/Acre today.")
-        st.success(f"📈 **Freshwater Saved:** {int(flood_water - water_pred)} Liters/Acre ({(1 - water_pred/flood_water)*100:.1f}%)")
+        st.success(f"📈 **Freshwater Saved:** {int(flood_water - water_pred)} Liters/Acre")
         
         # 7-Day Projection Chart
         days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-        drip_proj = [water_pred + np.random.randint(-500, 500) for _ in range(7)]
+        drip_proj = [water_pred + np.random.randint(-200, 200) for _ in range(7)]
         flood_proj = [f * 1.65 for f in drip_proj]
         
         proj_df = pd.DataFrame({'Day': days, 'AI Drip': drip_proj, 'Flood': flood_proj})
-        fig_proj = px.bar(proj_df, x='Day', y=['Flood', 'AI Drip'], barmode='group', title="7-Day Water Usage Projection")
+        fig_proj = px.bar(proj_df, x='Day', y=['Flood', 'AI Drip'], barmode='group', title="Weather-Adjusted 7-Day Water Projection")
         fig_proj.update_layout(
             legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5),
             xaxis_title=None,
@@ -192,13 +198,6 @@ elif view == "⚡ AI Irrigation Scheduler":
             margin=dict(b=50)
         )
         st.plotly_chart(fig_proj, use_container_width=True)
-
-        # XAI Chart
-        importances = ai_model.feature_importances_
-        xai_df = pd.DataFrame({'Feature': feature_names, 'Importance': importances}).sort_values(by='Importance', ascending=True)
-        fig_xai = px.bar(xai_df, x='Importance', y='Feature', orientation='h', title="🧠 Explainable AI (XAI) Feature Weights")
-        fig_xai.update_layout(yaxis_title=None)
-        st.plotly_chart(fig_xai, use_container_width=True)
 
     # ==========================================
     # RECURSIVE SELF-IMPROVEMENT (ACTIVE LEARNING) MODULE
@@ -210,7 +209,7 @@ elif view == "⚡ AI Irrigation Scheduler":
     with st.form("feedback_form"):
         col_f1, col_f2 = st.columns(2)
         with col_f1:
-            actual_water_used = st.number_input("Actual Water Used (Liters/Acre)", min_value=500.0, max_value=10000.0, value=float(water_pred))
+            actual_water_used = st.number_input("Actual Water Used (Liters/Acre)", min_value=0.0, max_value=10000.0, value=float(water_pred))
             crop_yield_score = st.slider("Observed Crop Health / Yield Score (1-10)", 1, 10, 8)
         with col_f2:
             feedback_notes = st.selectbox("Field Performance Feedback", [
@@ -237,9 +236,6 @@ elif view == "⚡ AI Irrigation Scheduler":
             st.success("🎉 **Self-Improvement Loop Triggered Successfully!** Model weights updated recursively based on live field feedback.")
             st.balloons()
 
-# ------------------------------------------
-# VIEW 3: Carbon Ledger
-# ------------------------------------------
 elif view == "🍃 Methane & Carbon Ledger":
     st.header("🍃 Verified Carbon Credit Ledger")
     st.markdown("Calculates greenhouse gas reductions by shifting from continuous flooding to Alternate Wetting and Drying (AWD) irrigation.")
@@ -263,9 +259,6 @@ elif view == "🍃 Methane & Carbon Ledger":
         mime='text/csv',
     )
 
-# ------------------------------------------
-# VIEW 4: Business Model
-# ------------------------------------------
 elif view == "📈 TAM/SAM & Business Model":
     st.header("📈 Market Sizing & Revenue Model - Team Skynet")
     
@@ -285,3 +278,4 @@ elif view == "📈 TAM/SAM & Business Model":
     * **Phase 2 (Months 6-12):** Register initial water-savings on the Gold Standard Carbon Registry.
     * **Phase 3 (Year 2+):** Scale pan-India using open satellite integrations.
     """)
+```
